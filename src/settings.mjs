@@ -8,7 +8,8 @@ import { PROVIDERS, LEGACY } from './providers.mjs';
 import { momentSettings } from './core/moments.mjs';
 
 export const DEFAULTS = Object.freeze({
-  general: { theme: 'system', launchAtLogin: false, startHidden: false, nameStyle: 'pun', language: 'system' }, // nameStyle: see src/core/names.mjs
+  // nameStyle: see src/core/names.mjs. onboarded: the first-run setup was shown (people with older settings count as done).
+  general: { theme: 'system', launchAtLogin: false, startHidden: false, nameStyle: 'pun', language: 'system', onboarded: false },
   agents: {}, // { [agentId]: { enabled: boolean, path: string } } — path '' means the agent's default folder
   moments: momentSettings(),
   // provider: 'auto' | 'off' | a PROVIDERS id. providers[id]: { via, model, url }. maxCalls: per match, null = unlimited.
@@ -83,6 +84,7 @@ export class Settings extends EventEmitter {
     let raw = null;
     try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch {}
     this.value = sanitize(raw);
+    if (raw && typeof raw.general?.onboarded !== 'boolean') this.value.general.onboarded = true; // set up before first-run setup existed
   }
   get() { return structuredClone(this.value); }
   async update(patch) {

@@ -6,6 +6,7 @@ import { t, applyLanguage } from './i18n.js';
 import { api } from './transport.js';
 import { openSettings, toast } from './settings.js';
 import { renderFileMap, renderRoutes } from './filemap.js';
+import { startOnboarding, startTour } from './onboard.js';
 
 let info = { agents: [] };
 let projects = [];
@@ -409,14 +410,10 @@ function leftSection(s, box) {
 }
 
 // ---- wiring --------------------------------------------------------------------------------
-async function startDemo() {
-  const r = await api.startDemo();
-  toast(t(r?.started === false ? '데모 경기가 이미 진행 중이에요.' : '데모 경기를 시작했어요. 한 프로젝트에서 세 에이전트가 동시에 일해요.'));
-  setTimeout(async () => { await loadProjects(); const first = projects.filter(p => p.players.some(x => x.demo)).sort((a, b) => b.players.length - a.players.length)[0]; if (first && !current) openMatch(first.key); }, 2500);
-}
+const tour = () => startTour({ openMatch, closeMatch, current: () => current });
+const onboard = () => startOnboarding({ onDone: thenTour => { if (thenTour) tour(); } });
 // Text in the page chrome that isn't in the HTML (the HTML itself is translated by applyLanguage).
 function chromeText() {
-  $('demoBtn').lastChild.textContent = t('데모 경기 보기');
   $('widgetBtn').lastChild.textContent = t('위젯 켜기·끄기');
   if (isMac) { $('openSettings').title = t('설정 (⌘,)'); }
 }
@@ -425,14 +422,15 @@ function setupChrome() {
   $('searchIcon').replaceWith(icon('search'));
   $('searchKbd').textContent = isMac ? '⌘K' : 'Ctrl K';
   $('back').append(icon('back'));
-  const demo = $('demoBtn'); demo.append(icon('play'), el('span', null));
   const wb = $('widgetBtn'); wb.append(icon('widget'), el('span', null)); wb.hidden = !api.desktop;
   chromeText();
   $('openSettings').onclick = () => openSettings();
   $('settingsHero').onclick = () => openSettings('agents');
   $('back').onclick = closeMatch;
   wb.onclick = () => api.toggleWidget();
-  demo.onclick = startDemo; $('demoHero').onclick = startDemo;
+  $('tourHero').onclick = tour;
+  addEventListener('cl:tour', tour);
+  addEventListener('cl:onboard', onboard);
   document.querySelectorAll('.side-filters [data-f]').forEach(b => { b.onclick = () => { view.filter = b.dataset.f; store.set('cl-filter', view.filter); renderList(); }; });
   $('agentFilter').onchange = e => { view.agent = e.target.value; store.set('cl-agent', view.agent); renderList(); };
   $('search').oninput = e => { view.query = e.target.value; renderList(); };
@@ -469,11 +467,13 @@ function setupChrome() {
 
 (async () => {
   setupChrome();
-  try { applyPrefs(await api.getSettings()); } catch { applyPrefs({ general: {} }); }
+  let first = false;
+  try { const s = await api.getSettings(); applyPrefs(s); first = !s.general.onboarded; } catch { applyPrefs({ general: {} }); }
   try { info = await api.info(); } catch {}
   await loadProjects();
   setInterval(loadProjects, 4000);
   const last = store.get('cl-last');
   if (last && projects.some(p => p.key === last) && matchMedia('(min-width: 761px)').matches) openMatch(last);
   if (!api.desktop && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (first) onboard();
 })();

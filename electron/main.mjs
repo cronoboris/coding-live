@@ -27,7 +27,7 @@ const SHELL_TEXT = {
   ko: {
     noKeychain: '이 컴퓨터에는 키를 안전하게 저장할 키체인이 없어요. 환경 변수로 넣어 주세요.',
     widgetTitle: 'coding live 위젯', explainTitle: 'coding live 설명',
-    open: '중계석 열기', widget: '위젯 보기', demo: '데모 경기 보기', commentary: b => `해설: ${b ?? '정해진 문구'}`,
+    open: '중계석 열기', widget: '위젯 보기', commentary: b => `해설: ${b ?? '정해진 문구'}`,
     notify: '알림 받기', quit: 'coding live 끄기', startFailed: 'coding live를 시작하지 못했어요',
     updateReady: v => `새 버전 ${v}이(가) 준비됐어요`, updateReadyBody: '눌러서 재시작하면 바로 적용돼요. 다음에 끌 때 적용해도 돼요.',
     updateOut: v => `새 버전 ${v}이(가) 나왔어요`, updateOutBody: '눌러서 다운로드 페이지를 여세요.',
@@ -36,7 +36,7 @@ const SHELL_TEXT = {
   en: {
     noKeychain: 'This computer has no keychain to store keys safely. Please use an environment variable.',
     widgetTitle: 'coding live widget', explainTitle: 'coding live explanation',
-    open: 'Open coding live', widget: 'Show widget', demo: 'Watch a demo match', commentary: b => `Commentary: ${b ?? 'built-in lines'}`,
+    open: 'Open coding live', widget: 'Show widget', commentary: b => `Commentary: ${b ?? 'built-in lines'}`,
     notify: 'Get notifications', quit: 'Quit coding live', startFailed: 'coding live couldn’t start',
     updateReady: v => `coding live ${v} is ready`, updateReadyBody: 'Click to restart and update now, or it updates the next time you quit.',
     updateOut: v => `coding live ${v} is out`, updateOutBody: 'Click to open the download page.',
@@ -194,7 +194,6 @@ function refreshTray() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: tr('open'), click: () => showWindow() },
     { label: tr('widget'), type: 'checkbox', checked: s.widget.visible, click: item => live.updateSettings({ widget: { visible: item.checked } }) },
-    { label: tr('demo'), click: () => { live.startDemo(); showWindow(); } },
     { type: 'separator' },
     { label: tr('commentary')(live.backend), enabled: false },
     { label: tr('notify'), type: 'checkbox', checked: s.notifications.enabled, click: item => live.updateSettings({ notifications: { enabled: item.checked } }) },
@@ -248,7 +247,7 @@ function handle(channel, fn) {
 function wireIpc() {
   handle('cl:info', () => live.info());
   handle('cl:sessions', () => live.sessions());
-  handle('cl:projects', () => live.projects());
+  handle('cl:projects', () => live.listProjects());
   handle('cl:mic-project', (_e, key, on) => live.setMicProject(key, on));
   handle('cl:watch-project', async (e, id, key) => {
     const sender = e.sender;
@@ -276,7 +275,8 @@ function wireIpc() {
   handle('cl:mic', (_e, key, on) => live.setMic(key, on));
   handle('cl:review', (_e, key) => live.review(key));
   handle('cl:explain-file', (_e, key, path) => live.explainFile(String(key), String(path)));
-  handle('cl:demo', () => live.startDemo());
+  handle('cl:tutorial-start', () => live.startTutorial());
+  handle('cl:tutorial-stop', () => live.stopTutorial());
   handle('cl:mic-status', () => live.micStatus());
   handle('cl:mic-test', (_e, provider) => live.testMic(typeof provider === 'string' ? provider : null));
   handle('cl:secret-set', (_e, provider, key) => live.setSecret(String(provider), typeof key === 'string' ? key : null));

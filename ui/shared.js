@@ -8,7 +8,7 @@ export const clock = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${Stri
 export const money = v => `$${v < 0.1 ? v.toFixed(4) : v.toFixed(2)}`;
 export const rich = (text, cls = 'tx') => { const p = el('span', cls); String(text).split(/(`[^`]+`)/).forEach(part => p.append(part.length > 1 && part.startsWith('`') && part.endsWith('`') ? el('code', null, part.slice(1, -1)) : document.createTextNode(part))); return p; };
 export const ago = ms => { const s = Math.round((Date.now() - ms) / 1000); return s < 60 ? t('방금') : s < 3600 ? t('{n}분 전', { n: Math.round(s / 60) }) : s < 86400 ? t('{n}시간 전', { n: Math.round(s / 3600) }) : t('{n}일 전', { n: Math.round(s / 86400) }); };
-export const isTestPath = p => /(^|[\\/])(test|tests|__tests__|spec)[\\/]|[._-](test|spec)\.|^test_|[\\/]test_\w+\.py$/.test(String(p ?? ''));
+export const isTestPath = p => /(^|[\\/])(test|tests|__tests__|spec|specs)[\\/]|[._-](test|tests|spec|specs)\.|(^|[\\/])test_/.test(String(p ?? '')); // same rule as src/core/caster.mjs
 export const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 export const elapsed = s => (s.startedAt == null ? 0 : ((s.finished ? s.lastAt : Date.now()) - s.startedAt) / 1000);
 

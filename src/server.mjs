@@ -10,7 +10,7 @@ import { MOMENT_GROUPS } from './core/moments.mjs';
 
 const UI = fileURLToPath(new URL('../ui/', import.meta.url));
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
-const STATIC = new Set(['index.html', 'app.js', 'settings.js', 'widget.html', 'widget.js', 'shared.js', 'transport.js', 'filemap.js', 'i18n.js', 'style.css', 'widget.css', 'manifest.webmanifest', 'sw.js', 'icon.svg']);
+const STATIC = new Set(['index.html', 'app.js', 'settings.js', 'widget.html', 'widget.js', 'shared.js', 'transport.js', 'filemap.js', 'onboard.js', 'i18n.js', 'style.css', 'widget.css', 'manifest.webmanifest', 'sw.js', 'icon.svg']);
 
 export async function startServer({ port = 4417, host = '127.0.0.1', mic, env = process.env, settingsFile = join(homedir(), '.coding-live', 'settings.json') } = {}) {
   const live = await Live.create({ mic, env, settingsFile });
@@ -33,7 +33,7 @@ export async function startServer({ port = 4417, host = '127.0.0.1', mic, env = 
       }
       if (req.method === 'GET' && path === '/api/info') return json(res, 200, live.info());
       if (req.method === 'GET' && path === '/api/sessions') return json(res, 200, { sessions: live.sessions() });
-      if (req.method === 'GET' && path === '/api/projects') return json(res, 200, { projects: live.projects() });
+      if (req.method === 'GET' && path === '/api/projects') return json(res, 200, { projects: live.listProjects() });
       const pm = /^\/api\/project\/([\w-]+)\/(stream|mic)$/.exec(path);
       if (pm && pm[2] === 'stream' && req.method === 'GET') {
         res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store', connection: 'keep-alive' });
@@ -59,7 +59,10 @@ export async function startServer({ port = 4417, host = '127.0.0.1', mic, env = 
         if (req.headers['x-coding-live'] !== '1') return json(res, 403, { error: 'forbidden' });
         return json(res, 200, await live.updateSettings(JSON.parse((await readBody(req)) || '{}')));
       }
-      if (path === '/api/demo') return req.method === 'POST' && req.headers['x-coding-live'] === '1' ? json(res, 200, live.startDemo()) : json(res, 403, { error: 'forbidden' });
+      if (path === '/api/tutorial' || path === '/api/tutorial/stop') {
+        if (req.method !== 'POST' || req.headers['x-coding-live'] !== '1') return json(res, 403, { error: 'forbidden' });
+        return json(res, 200, path === '/api/tutorial' ? await live.startTutorial() : await live.stopTutorial());
+      }
       const f = /^\/api\/project\/([\w-]+)\/file$/.exec(path);
       if (f) {
         if (req.method !== 'POST' || req.headers['x-coding-live'] !== '1') return json(res, 403, { error: 'forbidden' });

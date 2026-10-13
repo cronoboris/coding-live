@@ -357,7 +357,8 @@ function about(c) {
   group(c, '', [
     row('coding live', `${t('버전 {v}', { v: a.version ?? '-' })}${a.browser ? ` · ${t('브라우저 모드')}` : a.platform ? ` · ${a.platform}` : ''}`),
     updateRow(),
-    row(t('데모 경기'), t('녹화된 경기 4개를 지금 뛰는 것처럼 재생해요. 크레딧이 들지 않아요.'), (() => { const b = el('button', 'btn'); b.type = 'button'; b.append(icon('play'), document.createTextNode(t('재생'))); b.onclick = async () => { await api.startDemo(); toast(t('데모 경기 4개를 시작했어요.')); close(); }; return b; })()),
+    row(t('튜토리얼'), t('화면 읽는 법을 처음부터 다시 안내해요. 진행 중인 경기가 없으면 예시 경기로 보여 줘요.'), (() => { const b = el('button', 'btn'); b.type = 'button'; b.append(icon('play'), document.createTextNode(t('다시 보기'))); b.onclick = () => { close(); window.dispatchEvent(new CustomEvent('cl:tour')); }; return b; })()),
+    row(t('처음 설정'), t('처음 켰을 때 나온 설정 안내를 다시 열어요.'), (() => { const b = el('button', 'btn'); b.type = 'button'; b.append(icon('settings'), document.createTextNode(t('다시 열기'))); b.onclick = () => { close(); window.dispatchEvent(new CustomEvent('cl:onboard')); }; return b; })()),
   ]);
   group(c, t('단축키'), [row(t('경기 찾기'), '', el('span', 'kbd', /Mac/.test(navigator.platform) ? '⌘K' : 'Ctrl K')), row(t('설정'), '', el('span', 'kbd', /Mac/.test(navigator.platform) ? '⌘,' : 'Ctrl ,')), row(t('닫기'), '', el('span', 'kbd', 'Esc'))]);
 }

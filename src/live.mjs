@@ -8,9 +8,9 @@ import { Hub } from './hub.mjs';
 import { Booth, filePersona, filePrompt, ROLES, rolePersona, rolePrompt } from './mic.mjs';
 import { LEGACY, PROVIDERS, ask, describe, explain as explainError, extractJson, resolve, status as providerStatus, test as testProvider } from './providers.mjs';
 import { envSecrets } from './secrets.mjs';
-import { demoAdapter, playDemo, demoPlaying } from './demo.mjs';
+import { demoAdapter, playDemo, stopDemo, DEMO_CWD, DEMO_LINES, demoRoles } from './demo.mjs';
 import { Settings } from './settings.mjs';
-import { groupProjects, buildProject } from './project.mjs';
+import { groupProjects, buildProject, projectKey } from './project.mjs';
 import { LineCounter } from './lines.mjs';
 import { parseKey } from './hub.mjs';
 import { dirname, join, basename, relative, resolve as resolvePath, sep } from 'node:path';
@@ -34,6 +34,7 @@ export class Live {
     live.micOverride = mic || null; // a command-line choice wins for this run but is never saved
     await live.apply(settings.get());
     settings.on('change', s => live.apply(s));
+    await stopDemo(); // an example match left by a tutorial that didn't finish
     await live.hub.scan();
     live.scanTimer = setInterval(() => live.hub.scan().catch(() => {}), 3000);
     live.scanTimer.unref?.();
@@ -69,8 +70,19 @@ export class Live {
     for (const key of this.hub.tails.keys()) this.hub.emit('update', key);
   }
 
-  // Replays recorded matches as if they were happening now (no agent, no credits needed).
-  startDemo() { const was = demoPlaying(); playDemo().then(() => this.hub.scan()).catch(() => {}); setTimeout(() => this.hub.scan().catch(() => {}), 600); return { started: !was }; }
+  // The tutorial's example match: replays a recorded match as if it were happening now (no agent, no credits) and
+  // resolves to its project key once the match shows up, or null if it didn't within a few seconds.
+  async startTutorial() {
+    playDemo().then(() => this.hub.scan());
+    const key = projectKey({ cwd: DEMO_CWD });
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 400));
+      await this.hub.scan();
+      if (this.projects().some(p => p.key === key)) return { key };
+    }
+    return { key: null };
+  }
+  async stopTutorial() { await stopDemo(); await this.hub.scan(); return { stopped: true }; }
 
   commentary(s = this.settings.value) { return this.micOverride ? override(this.micOverride, s.commentary) : s.commentary; }
 
@@ -98,6 +110,8 @@ export class Live {
   info() { return { version: VERSION, mic: this.backend, micAvailable: !!this.backend, micError: this.booth.lastError, spentUsd: this.booth.spentUsd, tokens: this.booth.tokens, agents: this.hub.adapters.map(a => ({ id: a.id, label: a.label })) }; }
   sessions() { return this.hub.sessions; }
   projects() { return groupProjects(this.hub.sessions); }
+  // The match list: the tutorial's example match is left out.
+  listProjects() { return this.projects().filter(p => !p.players.some(x => x.demo)); }
 
   // A project match: subscribes to every player (and to new ones as they appear) and sends one merged snapshot.
   async subscribeProject(pkey, send) {
@@ -251,7 +265,7 @@ export class Live {
     if (!tail) return null;
     this.restoreComments(key, tail.match);
     const autoMic = () => {
-      if (!background && this.backend && this.settings.value.commentary.autoOn && !tail.match.finished && !this.micOn.has(key) && !this.micOff.has(key) && !(project && this.micOff.has(project))) this.switchMic(key, true);
+      if (!background && this.backend && this.settings.value.commentary.autoOn && !tail.match.finished && !this.hub.sessions.find(s => s.key === key)?.demo && !this.micOn.has(key) && !this.micOff.has(key) && !(project && this.micOff.has(project))) this.switchMic(key, true);
     };
     autoMic();
     let timer = null, sentVersion = -1, closed = false;
@@ -326,6 +340,7 @@ export class Live {
   // Lines of code and of tests in the project, counted again at most every 30 seconds. `base` is the first count
   // since coding live started watching this folder, so the stats bar can show how much each side grew since.
   codeLines(p, onChange) {
+    if (p.cwd === DEMO_CWD) return DEMO_LINES;
     if (!p.cwd) return null;
     let m = this.lineCounts.get(p.cwd);
     if (!m) { m = { now: null, base: null, busy: false, at: 0 }; this.lineCounts.set(p.cwd, m); }
@@ -345,6 +360,7 @@ export class Live {
   roleFile(id) { return this.settings.file ? join(dirname(this.settings.file), 'roles', `${createHash('sha1').update(id).digest('hex')}.json`) : null; }
   roleMap(p, paths, onChange) {
     if (!this.settings.value.commentary.roleMap) return { off: true };
+    if (p.cwd === DEMO_CWD) return demoRoles(language());
     const conf = this.booth.conf;
     if (!conf || !p.cwd) return { nomic: true };
     const id = `${language()}\0${p.cwd}`;
@@ -404,7 +420,7 @@ export class Live {
     this.onAlert = onAlert;
     const sync = async list => {
       for (const s of list) {
-        if (!s.live || this.alertSubs.has(s.key)) continue;
+        if (!s.live || s.demo || this.alertSubs.has(s.key)) continue;
         const seen = { moments: null, quiet: false, finished: null };
         this.alertSubs.set(s.key, { seen, stop: null, since: Date.now() });
         const stop = await this.subscribe(s.key, snap => this.check(s, snap, seen), { background: true });
