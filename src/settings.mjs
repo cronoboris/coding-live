@@ -15,7 +15,8 @@ export const DEFAULTS = Object.freeze({
   // teach: how much the commentary explains for beginners ('full' | 'short' | 'off').
   commentary: {
     // fileExplain: clicking a file on the file map asks the AI what the file is for (sends the start of the file).
-    provider: 'auto', autoOn: true, maxCalls: 20, tone: 'spicy', includeSayings: true, teach: 'full', explain: true, fileExplain: true,
+    // roleMap: the AI sorts the touched files into plain areas for the role map (sends file paths only).
+    provider: 'auto', autoOn: true, maxCalls: 20, tone: 'spicy', includeSayings: true, teach: 'full', explain: true, fileExplain: true, roleMap: true,
     providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { via: p.methods[0], model: '', url: '' }])),
   },
   notifications: { enabled: true, decision: true, trick: true, stuck: true, quiet: true, final: true, sound: true },

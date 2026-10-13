@@ -264,6 +264,7 @@ function commentary(c) {
     row(t('말투'), t('매운맛은 시니컬한 농담을, 순한맛은 차분한 응원을 해요. 사실만 말하는 원칙은 같아요.'), seg(m.tone, [['spicy', t('매운맛')], ['mild', t('순한맛')]], v => save({ commentary: { tone: v } }))),
     row(t('도구·명령 설명'), t('중계 줄마다 "더보기"를 붙여 에이전트가 쓴 도구와 명령이 무슨 일을 하는지 한 단계씩 풀어 줘요. 위젯에서 선수 줄을 누르면 옆에 따로 보여 줘요.'), toggle(m.explain, v => save({ commentary: { explain: v } }, null))),
     row(t('파일 AI 설명'), t('파일 지도에서 파일을 누르면 AI가 그 파일이 프로젝트에서 맡은 역할을 설명해요. 파일 내용 앞부분(최대 200줄)이 고른 프로바이더로 전달돼요.'), toggle(m.fileExplain, v => save({ commentary: { fileExplain: v } }, null))),
+    row(t('역할 지도'), t('파일 지도를 화면·데이터·테스트 같은 역할 구역으로 묶어 보여 줘요. 선수가 건드린 파일의 경로(내용은 아님)가 고른 프로바이더로 전달돼요.'), toggle(m.roleMap, v => save({ commentary: { roleMap: v } }, null))),
     row(t('초보자 설명'), t('장면마다 일상 비유, 왜 중요한지, 에이전트에게 그대로 물어볼 말을 붙여 줘요. 자세히는 처음 보는 패턴을 펼쳐서 보여 줘요.'), seg(m.teach, [['full', t('자세히')], ['short', t('짧게')], ['off', t('끄기')]], v => save({ commentary: { teach: v } }))),
     row(t('경기당 해설 한도'), m.maxCalls == null ? t('한도 없이 결정적 장면마다 불러요. 긴 경기에서는 비용이 그만큼 늘어요.') : t('결정적 장면 한 번에 한 번 불러요. {n}번을 넘으면 정해진 문구로 해설해요.', { n: m.maxCalls }), seg(m.maxCalls, limits, v => save({ commentary: { maxCalls: v } }))),
   ], `${t('이번 실행에서 해설에 쓴 비용: {cost}', { cost: state.info.spentUsd ? `$${state.info.spentUsd.toFixed(4)}` : '$0' })}${state.info.tokens ? ` · ${t('API 토큰 {n}개', { n: state.info.tokens.toLocaleString() })}` : ''} · ${t('Claude Code(하이쿠) 기준 장면 하나에 약 $0.005예요. Ollama는 무료예요.')}`);

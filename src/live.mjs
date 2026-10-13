@@ -5,7 +5,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, 
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { Hub } from './hub.mjs';
-import { Booth, filePersona, filePrompt } from './mic.mjs';
+import { Booth, filePersona, filePrompt, ROLES, rolePersona, rolePrompt } from './mic.mjs';
 import { LEGACY, PROVIDERS, ask, describe, explain as explainError, extractJson, resolve, status as providerStatus, test as testProvider } from './providers.mjs';
 import { envSecrets } from './secrets.mjs';
 import { demoAdapter, playDemo, demoPlaying } from './demo.mjs';
@@ -43,7 +43,7 @@ export class Live {
     this.locale = locale;
     this.hub = hub; this.settings = settings; this.backend = null; this.booth = new Booth(null); this.secrets = envSecrets({});
     this.micOn = new Set(); this.reviews = new Map(); this.alertSubs = new Map(); this.onAlert = null;
-    this.compactionFiles = new WeakMap(); this.restored = new WeakSet(); this.fileNotes = new Map();
+    this.compactionFiles = new WeakMap(); this.restored = new WeakSet(); this.fileNotes = new Map(); this.roleMaps = new Map();
     this.momentSettings = momentSettings(settings.value?.moments);
     setNameStyle(settings.value?.general?.nameStyle);
     setLanguage(settings.value?.general?.language, this.locale);
@@ -109,7 +109,7 @@ export class Live {
       const p = project();
       // Players who left the roster after being watched still contribute their plays.
       const departed = p ? p.left.map(l => l.key).filter(k => players.get(k)?.snap && !order.includes(k)) : [];
-      if (p) send(named(buildProject(p, [...order, ...departed].map(k => ({ key: k, snap: players.get(k)?.snap ?? null })), (key, moment) => {
+      if (p) send(withRoles(p, named(buildProject(p, [...order, ...departed].map(k => ({ key: k, snap: players.get(k)?.snap ?? null })), (key, moment) => {
         const match = this.hub.tails.get(key)?.match;
         if (!match) return null;
         match.setMomentSettings(this.momentSettings);
@@ -121,8 +121,9 @@ export class Live {
         const existing = match.moments.find(m => m.type === moment.type && m.eventAt <= moment.eventAt && m.lastAt >= moment.eventAt);
         if (this.micOn.has(key)) this.booth.cover(match, () => { this.saveComments(key, match); schedule(); });
         return match.comments.get(existing?.key ?? `${moment.type}@${moment.eventAt}`) ?? null;
-      }, this.momentSettings)));
+      }, this.momentSettings))));
     };
+    const withRoles = (p, snap) => { snap.roles = this.roleMap(p, snap.files.map(f => f.path), schedule); return snap; };
     // Each player's match takes its name from the project, so its commentary calls the player what the screen does.
     const named = snap => {
       for (const pl of [...snap.players, ...(snap.left ?? [])]) { const match = this.hub.tails.get(pl.key)?.match; if (match && pl.name) match.assignedName = pl.name; }
@@ -304,6 +305,52 @@ export class Live {
       this.fileNotes.set(cacheKey, note);
       return note;
     } catch (e) { return { error: 'call', message: explainError(e, conf).message }; }
+  }
+
+  // The role map: the AI sorts the project's touched files into the fixed areas (ROLES), from their paths alone.
+  // One call at a time per project, new files asked as they appear; kept on disk per project and language so a
+  // reopened match keeps its areas. `onChange` redraws once an answer lands. Files outside the project are "other"
+  // without being sent.
+  roleFile(id) { return this.settings.file ? join(dirname(this.settings.file), 'roles', `${createHash('sha1').update(id).digest('hex')}.json`) : null; }
+  roleMap(p, paths, onChange) {
+    if (!this.settings.value.commentary.roleMap) return { off: true };
+    const conf = this.booth.conf;
+    if (!conf || !p.cwd) return { nomic: true };
+    const id = `${language()}\0${p.cwd}`;
+    let m = this.roleMaps.get(id);
+    if (!m) {
+      m = { files: {}, areas: {}, busy: false, error: null, errorAt: 0 };
+      const file = this.roleFile(id);
+      try { const saved = file && JSON.parse(readFileSync(file, 'utf8')); if (saved?.files) Object.assign(m, { files: saved.files, areas: saved.areas ?? {} }); }
+      catch (error) { if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error; }
+      this.roleMaps.set(id, m);
+    }
+    for (const path of paths) if (!Object.hasOwn(m.files, path) && (/^([\\/]|[A-Za-z]:)/.test(path) || path.split(/[\\/]/).includes('..'))) m.files[path] = 'other';
+    const todo = paths.filter(path => !Object.hasOwn(m.files, path));
+    if (todo.length && !m.busy && Date.now() - m.errorAt > 60_000) {
+      m.busy = true;
+      const names = dir => { try { return readdirSync(dir).filter(n => !n.startsWith('.')).slice(0, 40); } catch { return []; } };
+      const batch = todo.slice(0, 150);
+      ask(conf, rolePrompt({ project: p.name, top: names(p.cwd), paths: batch }), rolePersona())
+        .then(r => {
+          this.booth.count(r);
+          const j = extractJson(r.text);
+          if (!j || typeof j.files !== 'object') throw new Error(t('provider.badReply'));
+          for (const path of batch) m.files[path] = ROLES.includes(j.files[path]) ? j.files[path] : 'other';
+          for (const [role, text] of Object.entries(j.areas ?? {})) if (ROLES.includes(role) && typeof text === 'string' && text.trim()) m.areas[role] = text.trim().slice(0, 160);
+          m.error = null;
+          const file = this.roleFile(id);
+          if (file) {
+            mkdirSync(dirname(file), { recursive: true });
+            const tmp = `${file}.${process.pid}.tmp`;
+            writeFileSync(tmp, JSON.stringify({ files: m.files, areas: m.areas }));
+            renameSync(tmp, file);
+          }
+        })
+        .catch(e => { m.error = explainError(e, conf).message; m.errorAt = Date.now(); })
+        .finally(() => { m.busy = false; onChange(); });
+    }
+    return { files: { ...m.files }, areas: { ...m.areas }, pending: todo.length > 0 && !m.error, error: m.error };
   }
 
   async review(key) {

@@ -381,6 +381,33 @@ code { font-family: var(--font-mono); font-size: .9em; background: var(--layer-1
 .tm svg.trails { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 .trail { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 1.5 5; stroke-linecap: round; stroke-linejoin: round; opacity: .45; transition: opacity .3s; }
 .trail.on { opacity: .9; stroke: var(--accent); }
+/* Role map: areas a player fixed one after the other, the move caption, and each player's route under the map. */
+/* Each area has its own colour: the island's border, its name, and its chips in the route list. */
+[data-role="screen"] { --zone: #4c9aff; } [data-role="logic"] { --zone: #b07cff; } [data-role="shared"] { --zone: #2ec4b6; }
+[data-role="data"] { --zone: #f4a63a; } [data-role="storage"] { --zone: #c98b5b; } [data-role="network"] { --zone: #4fc3f7; }
+[data-role="assets"] { --zone: #ff7eb6; } [data-role="tooling"] { --zone: #9aa5b1; } [data-role="tests"] { --zone: #4cc38a; }
+[data-role="docs"] { --zone: #e6d36a; } [data-role="other"], [data-role="pending"] { --zone: var(--border-strong); }
+.tdir.island { border-radius: var(--r-lg); background: color-mix(in srgb, var(--zone) 5%, var(--base)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--zone) 70%, transparent), 0 8px 20px -14px rgba(0, 0, 0, .7); }
+.tdir.island.hot { background: color-mix(in srgb, var(--zone) 10%, var(--base)); box-shadow: inset 0 0 0 2.5px var(--zone), 0 8px 20px -14px rgba(0, 0, 0, .7); }
+.tdir.island .tdh { top: 4px; }
+.tdir.island .tdh b { flex: none; color: color-mix(in srgb, var(--zone) 65%, var(--text)); }
+.tdir.island .tdh span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.link { stroke: var(--accent); stroke-linecap: round; opacity: .22; pointer-events: stroke; }
+.link:hover { opacity: .5; }
+.hopcap { position: absolute; z-index: 5; transform: translate(-50%, -100%); max-width: 280px; padding: 5px 9px; border-radius: var(--r-md); background: var(--sheet); box-shadow: var(--shadow-pop); font-size: 11.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; animation: rise .2s var(--ease) both, fade-out .6s var(--ease) 7.4s both; }
+@keyframes fade-out { to { opacity: 0; } }
+.fmview { display: inline-flex; gap: 8px; align-items: center; }
+.fmview .why { font-size: var(--fs-micro); }
+.routes { display: grid; gap: 6px; padding-top: 4px; }
+.routes .label { margin-bottom: 2px; }
+.route { display: flex; gap: 10px; align-items: center; font-size: var(--fs-meta); min-width: 0; }
+.route .who { display: inline-flex; gap: 6px; align-items: center; flex: none; max-width: 160px; color: var(--text-soft); }
+.route .who span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route .avatar { width: 18px; height: 18px; border-radius: 50%; font-size: 8px; }
+.route .zones { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--muted); }
+.route .zone { padding: 1px 7px; border-radius: var(--r-pill); background: var(--layer-1); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--zone) 60%, transparent); color: var(--text-soft); white-space: nowrap; }
+.route .zone.now { background: color-mix(in srgb, var(--zone) 18%, var(--base)); box-shadow: inset 0 0 0 1.5px var(--zone); color: var(--text); }
+.route .arrow { color: var(--faint); }
 .trail.dim { opacity: .12; }
 .lastdot { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--base); pointer-events: auto; transition: left .5s var(--ease), top .5s var(--ease); }
 .runner { all: unset; box-sizing: border-box; position: absolute; z-index: 2; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 5px; height: 24px; padding: 0 7px 0 2px; border-radius: var(--r-pill); background: var(--sheet); box-shadow: inset 0 0 0 1px var(--border-strong), 0 4px 10px -6px rgba(0, 0, 0, .5); font-size: 11.5px; white-space: nowrap; cursor: pointer; transition: left .9s cubic-bezier(.5, 0, .3, 1), top .9s cubic-bezier(.5, 0, .3, 1), opacity .3s, box-shadow .15s; }

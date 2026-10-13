@@ -5,7 +5,7 @@ import { $, el, clock, money, rich, ago, store, momentLabel, MOMENT_CHIP, avatar
 import { t, applyLanguage } from './i18n.js';
 import { api } from './transport.js';
 import { openSettings, toast } from './settings.js';
-import { renderFileMap } from './filemap.js';
+import { renderFileMap, renderRoutes } from './filemap.js';
 
 let info = { agents: [] };
 let projects = [];
@@ -102,7 +102,7 @@ async function renderWelcome() {
 function openMatch(key) {
   current?.stop?.();
   const members = projects.find(p => p.key === key)?.players.map(p => p.key) ?? [];
-  current = { key, members, stop: null, snap: null, rendered: 0, tab: store.get('cl-side') || 'feed', sel: null, map: { hops: new Map() } };
+  current = { key, members, stop: null, snap: null, rendered: 0, tab: store.get('cl-side') || 'feed', sel: null, map: { hops: new Map(), zones: new Map() } };
   store.set('cl-last', key);
   $('app').classList.add('watching');
   $('welcome').hidden = true;
@@ -176,8 +176,27 @@ function renderFiles(s) {
     const ld = el('span'); ld.append(el('i', 'last'), document.createTextNode(t('마지막으로 만진 파일'))); lg.append(ld);
     const tr = el('span'); tr.append(el('i', 'trail'), document.createTextNode(t('최근 이동'))); lg.append(tr);
   }
-  renderFileMap($('filemap'), s, { sel: current.sel, onSelect: select, onFile: showFileNote, state: current.map });
+  // Role view (default) needs the AI's areas; without them the folder view shows, with the reason next to the switch.
+  const wanted = store.get('cl-mapview') || 'role';
+  const r = s.roles ?? {};
+  const roles = wanted === 'role' && r.files && (Object.keys(r.files).length || r.pending) ? r : null;
+  const why = wanted !== 'role' || roles ? '' : r.off ? t('역할 보기가 설정에서 꺼져 있어요.') : r.nomic ? t('역할 보기는 해설 AI가 연결돼야 써요.') : r.error ? t('역할을 나누지 못했어요: {message}', { message: r.error }) : '';
+  let sw = $('fmView');
+  if (!sw) { sw = el('span', 'fmview'); sw.id = 'fmView'; $('fmLegend').before(sw); }
+  const seg = el('span', 'seg');
+  seg.append(...[['role', t('역할 보기')], ['folder', t('폴더 보기')]].map(([v, label]) => {
+    const b = el('button', null, label); b.type = 'button'; b.setAttribute('aria-pressed', String(v === wanted));
+    b.onclick = () => { store.set('cl-mapview', v); renderFiles(current.snap); };
+    return b;
+  }));
+  sw.replaceChildren(seg);
+  if (why) sw.append(el('span', 'faint why', why));
+  if (roles) sw.title = t('파일을 역할별 구역으로 묶어요. 구역은 AI가 파일 경로를 보고 나눠요. 구역 사이 선은 선수가 한 구역을 고치다 다른 구역으로 넘어가 고친 곳이에요.');
+  else sw.removeAttribute('title');
+  renderFileMap($('filemap'), s, { sel: current.sel, onSelect: select, onFile: showFileNote, state: current.map, roles, noteFor: path => notes.get(`${current.key}\0${path}`), minH: roles ? Math.round($('mapScroll').clientHeight * 0.7) : 0 });
+  renderRoutes($('fmRoutes'), s, roles);
 }
+const notes = new Map(); // AI file notes already fetched, by match and path: shown again when hovering the file
 
 // A file tile opens a small note under it: what the players did with it, then the AI's take on what the file is for.
 async function showFileNote(f, tile, facts) {
@@ -211,6 +230,8 @@ async function showFileNote(f, tile, facts) {
     body.append(document.createTextNode(`${why} `));
     if (r && ['nomic', 'off', 'call', 'format'].includes(r.error)) body.append(settingsLink());
   } else {
+    notes.set(`${current.key}\0${f.path}`, r);
+    tile.title = `${tile.title.split('\n\n')[0]}\n\n${r.text}`;
     if (r.part) body.append(el('span', 'chip', r.part));
     body.append(el('p', null, r.text), el('div', 'src', t('AI 설명 · {ai}', { ai: r.ai })));
   }

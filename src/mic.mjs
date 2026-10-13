@@ -215,6 +215,33 @@ Answer with one JSON object only, with only these keys: {"part": "the part of th
 답은 JSON 객체 하나로만 써. 키는 이것뿐이야: {"part": "이 파일이 속한 프로젝트의 부분을 한두 단어로(화면, 데이터, 테스트, 설정, 문서, 빌드 등)", "text": "이 파일이 프로젝트에서 맡은 역할을 3~4문장으로. 무엇을 하는 파일인지, 다른 부분과 어떻게 이어지는지."}`;
 }
 
+// Sorting a project's files into the fixed areas of the role map. Only paths and top-level names are sent.
+export const ROLES = ['screen', 'logic', 'shared', 'data', 'storage', 'network', 'assets', 'tooling', 'tests', 'docs', 'other'];
+const ROLE_GUIDE = {
+  en: 'screen: what users see and press (UI, pages, styles); logic: the core rules and calculations; shared: small helpers many parts use; data: fixed material the program reads (item lists, tables, content); storage: databases and saved records; network: talking to servers and outside services (APIs, AI calls); assets: images, sounds, fonts; tooling: setting up, building and running (config, scripts, CI); tests: checks that it works; docs: written explanations; other: none of these fit',
+  ko: 'screen: 사용자가 보고 누르는 부분(화면, 페이지, 스타일); logic: 핵심 규칙과 계산; shared: 여러 곳에서 같이 쓰는 작은 도구; data: 프로그램이 꺼내 쓰는 고정된 재료(아이템 목록, 표, 콘텐츠); storage: 데이터베이스와 저장 기록; network: 서버·외부 서비스와 주고받는 통로(API, AI 호출); assets: 이미지·소리·글꼴; tooling: 준비·조립·실행(설정, 스크립트, CI); tests: 잘 되는지 시험; docs: 설명 문서; other: 어디에도 맞지 않음',
+};
+export const rolePersona = () => (language() === 'en'
+  ? 'You sort the files of a software project into plain areas for someone who cannot read code. Judge each file by its path and the names around it; put a file in "other" rather than guessing. Always answer in English.'
+  : '너는 코드를 모르는 사람을 위해 소프트웨어 프로젝트의 파일을 쉬운 구역으로 나누는 안내자야. 파일마다 경로와 주변 이름으로 판단하고, 애매하면 억지로 넣지 말고 "other"에 넣어. 설명은 해요체로 써.');
+export function rolePrompt({ project, top, paths }) {
+  const list = paths.map(p => `- ${p}`).join('\n');
+  if (language() === 'en') return `Project: ${project}
+Top-level folders and files: ${top.join(', ') || 'none'}
+Areas (use these ids only): ${ROLE_GUIDE.en}
+Files:
+${list}
+
+Answer with one JSON object only, with only these keys: {"files": {"<each file path exactly as listed>": "<area id>"}, "areas": {"<area id used>": "what this area does in this project, one short sentence"}}`;
+  return `프로젝트: ${project}
+프로젝트 맨 위의 폴더와 파일: ${top.join(', ') || '없음'}
+구역(이 id만 써): ${ROLE_GUIDE.ko}
+파일:
+${list}
+
+답은 JSON 객체 하나로만 써. 키는 이것뿐이야: {"files": {"<위 목록의 파일 경로 그대로>": "<구역 id>"}, "areas": {"<쓴 구역 id>": "이 프로젝트에서 이 구역이 하는 일을 짧은 한 문장으로"}}`;
+}
+
 export function reviewPrompt(match, { includeSayings = true } = {}) {
   const st = match.stats();
   if (language() === 'en') return `The session has ended. Write a review. Make headline and highlights lively but factual; make trust and decisions precise and practical. Follow the vocabulary rules above. Answer in English.
