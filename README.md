@@ -6,7 +6,7 @@ English · [한국어](README.ko.md)
 
 Don't read the code. Just watch.
 
-<!-- Promo video (English): in the GitHub web editor, drag the video file onto this line -->
+https://github.com/user-attachments/assets/a854f761-205a-4ae5-a62a-ba38854bee2e
 
 coding live treats coding as a sport of its own and covers the coding agents running on your computer, live.\
 Agents working in the same project folder (say, Claude Code and Codex side by side) become players in one match and are covered together.
