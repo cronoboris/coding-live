@@ -84,10 +84,11 @@ test('project generation filters stale snapshots and never emits disabled clashe
 
 test('live settings purge queued commentary and late replies, then filter rebuilt matches', async () => {
   const m = new Match();
-  emit(m, 'assign'); emit(m, 'report');
   const settings = { value: sanitize({ commentary: { provider: 'off' } }) };
   const hub = fakeHub(m), live = new Live(hub, settings);
   live.booth = new Booth({ provider: 'compatible', via: 'api' });
+  live.booth.connect(m);
+  emit(m, 'assign'); emit(m, 'report');
   live.booth.busy = true;
   live.booth.cover(m, () => {});
   assert.equal(live.booth.queue.length, 2);

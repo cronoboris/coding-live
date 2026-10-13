@@ -229,7 +229,7 @@ export class Live {
     const tail = this.hub.tails.get(key);
     if (!tail) return { error: 'not watching this match' };
     tail.match.setMomentSettings(this.momentSettings);
-    if (on && this.backend) { this.micOn.add(key); this.booth.cover(tail.match, () => this.hub.emit('update', key)); } else this.micOn.delete(key);
+    if (on && this.backend) { if (!this.micOn.has(key)) this.booth.connect(tail.match); this.micOn.add(key); this.booth.cover(tail.match, () => this.hub.emit('update', key)); } else this.micOn.delete(key);
     this.hub.emit('update', key);
     return { on: this.micOn.has(key), backend: this.backend };
   }

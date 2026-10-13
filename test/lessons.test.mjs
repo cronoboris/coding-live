@@ -55,7 +55,7 @@ test('every moment teaches something, and the same trick is called out at most t
   assert.equal(skips.length, 1);
   assert.equal(skips[0].count, 3);
   assert.equal(skips[0].lesson.id, 'skip-test');
-  assert.match(skips[0].auto.caster, /테스트 건너뛰기/);
+  assert.match(skips[0].auto.caster, /테스트 일부를 빼고/);
   m.push({ type: 'end', at: 9000, text: 'done' });
   assert.match(m.snapshot().oneCheck, /건너뛰게\(skip\)/);
   assert.deepEqual(m.snapshot().learn.map(l => l.id), ['no-test']);

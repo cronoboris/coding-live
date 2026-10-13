@@ -32,7 +32,7 @@ test('cloud session replay: test fail, VAR, recovery, decision and rating', () =
   assert.equal(s.files.find(f => f.path.endsWith('recurrence.test.mjs')).status, 'pass');
   assert.match(s.oneCheck, /테스트를 왜 바꿨어/);
   assert.equal(s.moments.find(x => x.type === 'var').lesson.name, '정답지 고치기');
-  assert.match(s.moments.find(x => x.type === 'var').auto.line, /실패 직후 테스트 파일/);
+  assert.match(s.moments.find(x => x.type === 'var').auto.line, /채점표를 손본/);
 });
 
 test('headless stream-json replay keeps the offline engine result', () => {

@@ -149,6 +149,6 @@ export function detectTricks(tool, output = '', error = false) {
 // ---- fixed commentary (no model) -------------------------------------------------------------
 // `c` gives the player's name, season record and running stats; only those numbers are used.
 export function autoComment(c, m) {
-  const key = `auto.${m.type}`;
-  return { caster: MOMENT_LABEL[m.type] ?? t('auto.fallbackCaster'), line: t(Object.hasOwn(catalogs[language()], key) ? key : 'auto.fallbackLine') };
+  const key = `auto.${m.type}`, call = `cast.${m.type}`, catalog = catalogs[language()];
+  return { caster: Object.hasOwn(catalog, call) ? t(call) : MOMENT_LABEL[m.type] ?? t('auto.fallbackCaster'), line: t(Object.hasOwn(catalog, key) ? key : 'auto.fallbackLine') };
 }

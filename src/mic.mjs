@@ -234,16 +234,24 @@ export class Booth {
   constructor(conf = null, { max = 20, tone = 'spicy', includeSayings = true, teach = 'full' } = {}) {
     Object.assign(this, { conf, max, tone, includeSayings, teach });
     this.busy = false; this.queue = []; this.calls = new Map(); this.spentUsd = 0; this.tokens = 0; this.lastError = null; this.onError = null;
+    this.skipped = new WeakMap();
   }
+  // Commentary starts from the moment the mic connects: of the moments already on record, only the newest gets a
+  // line; the older ones keep their fixed lines.
+  connect(match) { this.skipped.set(match, new Set(match.moments.slice(0, -1).map(m => m.key))); }
   get label() { return describe(this.conf); }
   limited(match) { return this.max != null && (this.calls.get(match) ?? 0) + this.queue.filter(q => q.match === match).length >= this.max; }
-  // Queue every key moment of a match that has no commentary yet.
+  // Queue every key moment since the mic connected that has no commentary yet, newest first and ahead of older
+  // queued moments, so the line on screen is the one being written.
   cover(match, onDone) {
     if (!this.conf) return;
-    for (const m of match.moments) {
-      if (match.comments.has(m.key) || this.queue.some(q => q.match === match && q.m.key === m.key)) continue;
+    if (!this.skipped.has(match)) this.connect(match);
+    const skipped = this.skipped.get(match);
+    let front = 0;
+    for (const m of [...match.moments].reverse()) {
+      if (skipped.has(m.key) || match.comments.has(m.key) || this.queue.some(q => q.match === match && q.m.key === m.key)) continue;
       if (this.limited(match)) break;
-      this.queue.push({ match, m, onDone });
+      this.queue.splice(front++, 0, { match, m, onDone });
       match.setComment(m.key, { loading: true });
     }
     this.pump();

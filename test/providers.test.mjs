@@ -124,8 +124,7 @@ test('settings: old backend migrates, limits can be unlimited, only local server
 });
 
 test('an unlimited booth covers every key moment; a limited one stops at the limit', async () => {
-  const match = () => {
-    const m = new Match();
+  const fill = m => {
     m.push({ type: 'prompt', at: 0, text: 'fix it' });
     for (let k = 1; k <= 5; k++) {
       m.push({ type: 'call', at: k * 61000, id: `a${k}`, tool: { kind: 'shell', command: 'npm test' } });
@@ -135,7 +134,9 @@ test('an unlimited booth covers every key moment; a limited one stops at the lim
   };
   const conf = { provider: 'ollama', via: 'local', model: 'qwen3:8b', url };
   const run = async max => {
-    const m = match(), booth = new Booth(conf, { max });
+    const m = new Match(), booth = new Booth(conf, { max });
+    booth.connect(m); // the mic connected before the match began, so every moment is new
+    fill(m);
     await new Promise(done => { booth.cover(m, () => { if (!booth.queue.length && !booth.busy) done(); }); setTimeout(done, 3000); });
     await new Promise(r => setTimeout(r, 50));
     return { moments: m.moments.length, commented: [...m.comments.values()].filter(c => c.caster).length };
@@ -143,6 +144,6 @@ test('an unlimited booth covers every key moment; a limited one stops at the lim
   const all = await run(null);
   assert.ok(all.moments >= 4); assert.equal(all.commented, all.moments);
   assert.equal((await run(2)).commented, 2);
-  const s = match().snapshot();
+  const s = fill(new Match()).snapshot();
   assert.ok(s.moments.every(x => x.auto?.line), 'every moment has fixed commentary to fall back on');
 });

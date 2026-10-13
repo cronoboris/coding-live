@@ -67,6 +67,19 @@ test('new moments enter the existing Booth queue and obey its limit', () => {
   assert.equal(b.queue.length, 1);
 });
 
+test('on connect only the newest recorded moment is queued; later moments jump ahead, newest first', () => {
+  const m = new Match();
+  m.addMoment('assign', 0, 'old', 1000); m.addMoment('instruction', 0, 'older but recorded', 2000); m.addMoment('report', 0, 'latest', 3000);
+  const b = new Booth({ provider: 'compatible', via: 'api' });
+  b.busy = true;
+  b.cover(m, () => {});
+  assert.deepEqual(b.queue.map(q => q.m.type), ['report']);
+  assert.ok(!m.comments.has(m.moments[0].key), 'older moments keep their fixed lines');
+  m.addMoment('big-write', 0, 'next', 4000); m.addMoment('abort', 0, 'newest', 5000);
+  b.cover(m, () => {});
+  assert.deepEqual(b.queue.map(q => q.m.type), ['abort', 'big-write', 'report']);
+});
+
 test('worker registry errors supersede a report and repeated polling is idempotent', () => {
   const live = new Live({}, {});
   const key = id => Buffer.from(`mixdog\0${fileURLToPath(new URL(`./fixtures/worker-lifecycle/sessions/${id}.json`, import.meta.url))}`).toString('base64url');
