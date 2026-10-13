@@ -291,7 +291,7 @@ export class Live {
     const binary = text === null || text.includes('\u0000');
     const names = dir => { try { return readdirSync(dir).filter(n => !n.startsWith('.')).slice(0, 40); } catch { return []; } };
     const prompt = filePrompt({
-      project: p.name, path: relative(root, file), binary,
+      project: p.name, path: relative(root, file).split(sep).join('/'), binary,
       neighbours: names(dirname(file)).filter(n => n !== basename(file)), top: names(root),
       head: binary ? '' : text.split('\n').slice(0, 200).join('\n'),
     });
