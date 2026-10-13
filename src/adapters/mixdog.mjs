@@ -34,6 +34,7 @@ export function normalizeTool(name, a = {}) {
     case 'list': return { name, kind: 'search', pattern: a.path ?? '.' };
     case 'agent': return { name, kind: 'delegate', tag: a.tag, agent: a.agent, prompt: String(a.prompt ?? '').replace(/\s+/g, ' ').trim().slice(0, 160), type: a.type };
     case 'goal': return { name, kind: 'plan' };
+    case 'git': { const command = [].concat(a.command ?? []).filter(Boolean).join(' && '); return { name, kind: 'other', ...(command ? { command } : {}) }; }
     default: return { name, kind: 'other' };
   }
 }

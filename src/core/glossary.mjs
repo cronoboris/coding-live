@@ -13,6 +13,22 @@ const english = {
     delegate: ['Subagent', 'Gives part of the work to another AI. Like dividing chores among helpers.'],
     other: ['Tool', 'Runs a program or feature. Like taking a utensil from a kitchen drawer.'],
   },
+  tools: {
+    git: 'A program that keeps the project\'s work history (versions). It records what changed and when, so you can go back to an earlier state. Like the save-file system of a game.',
+    github: 'Works with GitHub (an online service for storing code and working on it together): repositories, issues and pull requests.',
+    websearch: 'Searches the internet. Like typing words into a search box.',
+    webfetch: 'Fetches and reads the contents of a web address.',
+    browser: 'Drives a web browser: opens pages and clicks through them.',
+    memory: 'Saves or looks up the user\'s preferences and rules to remember.',
+    recall: 'Looks up earlier conversations or work to remember them.',
+    todowrite: 'Makes a to-do list and marks progress on it.',
+    skill: 'Loads a prepared instruction sheet (a skill) and follows it.',
+    notebookedit: 'Edits a cell in a Jupyter notebook (a document mixing code and notes).',
+    askuserquestion: 'Sends the user a question and waits for the answer.',
+    viewimage: 'Opens an image file to look at it.',
+    mcp: 'The "{tool}" feature of the external connection (MCP) "{server}". MCP is a way to plug other programs and services into an agent.',
+    unknown: 'A feature built into this agent. Its name alone doesn\'t say exactly what it does.',
+  },
   git: {
     status: 'Lists changes waiting to be saved. Like a summary of unsaved work.',
     diff: 'Compares changed lines with their earlier version. Like tracked changes in a document.',
@@ -136,6 +152,29 @@ const kinds = {
   delegate: ['서브에이전트', '큰 작업의 일부를 다른 AI 일꾼에게 맡겨요. 팀장이 일을 나눠 주는 것과 같아요.'],
   other: ['도구', 'AI가 프로그램이나 기능을 실행해요. 요리사가 주방 도구를 꺼내 쓰는 것과 비슷해요.'],
 };
+// What a named (non-shell) tool is. Keys are the tool name in lower case without separators.
+const tools = {
+  git: '프로젝트의 작업 기록(버전)을 관리하는 프로그램이에요. 언제 무엇을 바꿨는지 저장해 두고, 필요하면 예전 상태로 돌아갈 수 있어요. 게임의 세이브 파일 시스템 같은 거예요.',
+  github: 'GitHub(코드를 올려 두고 함께 작업하는 인터넷 서비스)의 저장소, 이슈, 풀 리퀘스트를 다뤄요.',
+  websearch: '인터넷에서 정보를 검색해요. 검색창에 단어를 넣어 찾아보는 것과 같아요.',
+  webfetch: '인터넷 주소의 페이지 내용을 가져와 읽어요.',
+  browser: '웹 브라우저를 직접 움직여 페이지를 열고 눌러 봐요.',
+  memory: '기억해 둘 사용자의 선호나 규칙을 저장하거나 꺼내 봐요.',
+  recall: '예전 대화나 작업 기록을 찾아 다시 떠올려요.',
+  todowrite: '할 일 목록을 만들고 진행 상황을 표시해요.',
+  skill: '미리 준비된 작업 설명서(스킬)를 불러와 그대로 따라 해요.',
+  notebookedit: '주피터 노트북(코드와 설명을 섞어 쓰는 문서)의 칸을 고쳐요.',
+  askuserquestion: '사용자에게 질문을 보내고 답을 기다려요.',
+  viewimage: '이미지 파일을 열어 봐요.',
+  mcp: '외부 연결(MCP) "{server}"이 제공하는 "{tool}" 기능이에요. MCP는 에이전트에 다른 프로그램이나 서비스를 붙이는 연결 방식이에요.',
+  unknown: '이 에이전트에 들어 있는 기능이에요. 이름만으로는 정확히 무엇을 하는지 알 수 없어요.',
+};
+// The tool's own step: what this named tool is.
+function toolStep(name, tools) {
+  const mcp = /^mcp__(.+?)__(.+)$/.exec(name);
+  if (mcp) return { term: mcp[2], what: tools.mcp.replace('{server}', mcp[1]).replace('{tool}', mcp[2]) };
+  return { term: name, what: tools[name.toLowerCase().replace(/[^a-z0-9]/g, '')] ?? tools.unknown };
+}
 // Git: the project's history is a save-file system. A commit is a save point; a branch is a copy of the game to try things in.
 const git = {
   status: '저장 대기 중인 변경을 파일 목록으로 보여 줘요. 게임 화면의 변경 사항 요약 같은 거예요.',
@@ -232,7 +271,7 @@ const koreanWarnings = {
   chmod777: '주의: 누구나 이 파일을 고칠 수 있게 되어 위험해요.',
 };
 const withWarning = (what, warning) => (what && warning ? `${what} ${warning}` : what);
-const korean = { kinds, git, packages, commands };
+const korean = { kinds, git, packages, commands, tools };
 const isRecursiveRm = (cmd, sub, args) => cmd === 'rm' && [sub, ...args].some(a => a === '--recursive' || /^-[^-]*r/i.test(a ?? ''));
 
 // Which warning, if any, applies to a command's flags.
@@ -249,10 +288,13 @@ function warningFor(cmd, sub, args) {
 
 export function explain(tool = {}) {
   const en = language() === 'en';
-  const { kinds, git, packages, commands } = en ? english : korean;
+  const { kinds, git, packages, commands, tools } = en ? english : korean;
   if (tool.kind !== 'shell') {
     const [term, what] = kinds[tool.kind] ?? kinds.other;
-    return { steps: [{ term, what }], raw: String(tool.path ?? tool.pattern ?? tool.name ?? '') };
+    if ((tool.kind !== 'other' && kinds[tool.kind]) || !tool.name) return { steps: [{ term, what }], raw: String(tool.path ?? tool.pattern ?? tool.name ?? '') };
+    // A named tool: what the tool is, then any command it ran (a git tool carries git commands), then what a tool is.
+    const commandSteps = tool.command ? explain({ kind: 'shell', command: tool.command }).steps : [];
+    return { steps: [toolStep(String(tool.name), tools), ...commandSteps, { term, what }], raw: String(tool.command ?? tool.name) };
   }
   const raw = String(tool.command ?? '');
   if (/^\s*(?:for|while|until)\b/.test(raw)) return { raw, steps: [{ term: en ? 'Loop' : '반복문', what: en ? 'Repeats commands for a list or condition. Like following the same recipe for each guest.' : '조건이나 목록에 따라 반복해서 실행해요.' }] };

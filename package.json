@@ -1,6 +1,6 @@
 {
   "name": "coding-live",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Live sports-style play-by-play for running coding agents (Claude Code, Codex, Gemini CLI, Pi)",
   "type": "module",
   "bin": {

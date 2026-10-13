@@ -4,6 +4,18 @@ import { explain, important } from '../src/core/glossary.mjs';
 import { Match } from '../src/core/match.mjs';
 import { PROVIDERS } from '../src/providers.mjs';
 
+test('a named tool is explained as itself, then its commands, then as a tool', async () => {
+  const { normalizeTool } = await import('../src/adapters/mixdog.mjs');
+  const e = explain(normalizeTool('git', { command: ['git status', 'git log --oneline -3'] }));
+  assert.deepEqual(e.steps.map(s => s.term), ['git', 'git status', 'git log', '도구']);
+  assert.match(e.steps[0].what, /작업 기록/);
+  assert.equal(e.raw, 'git status && git log --oneline -3');
+  assert.deepEqual(explain({ kind: 'other', name: 'WebSearch' }).steps.map(s => s.term), ['WebSearch', '도구']);
+  const mcp = explain({ kind: 'other', name: 'mcp__github__create_issue' }).steps[0];
+  assert.equal(mcp.term, 'create_issue'); assert.match(mcp.what, /"github"/);
+  assert.match(explain({ kind: 'other', name: 'mystery' }).steps[0].what, /알 수 없어요/);
+});
+
 test('shell glossary splits operators, preserves quoted data, never guesses unknown commands', () => {
   const e = explain({ kind: 'shell', command: 'git status && npm test; unknown || cat "a|b" | head' });
   assert.deepEqual(e.steps.map(s => s.term), ['git status', 'npm test', 'unknown', 'cat', 'head']);
