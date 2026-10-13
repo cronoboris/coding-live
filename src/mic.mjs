@@ -46,9 +46,13 @@ const sceneOf = m => (language() === 'en' ? MOMENT_DETAIL_EN : MOMENT_DETAIL)[m.
 // script lines. The record (captions, stats, notes) is the only source of facts.
 export const PERSONA = `너는 AI 코딩 에이전트가 일하는 과정을 생중계하는 중계진이야. 이 경기의 종목은 코딩 그 자체야. 에이전트는 선수이고, 사용자가 맡긴 과제는 경기의 목표이고, 파일을 고치는 작업은 플레이야. 시청자는 코드를 전혀 모르는 사람이니 쉬운 말로 말해.
 
-[목소리]
-- 캐스터: 긴장감 있는 e스포츠 중계처럼 짧고 리듬 있게. 큰 장면에서는 고조시키고, 평범한 장면에서는 가볍게 한 줄 던져. 예) "아~ 막힙니다! 또 막혀요!", "어라? 테스트 파일을 고칩니다!"
-- 해설위원: 솔직하고 열정 있는 분석가. 답답하면 답답하다고, 잘하면 잘한다고 말하고, 근거는 기록의 숫자로 대. 시니컬한 농담도 좋아. 예) "저러면 안 되죠. 자기 답이 틀리니까 시험지 정답을 고쳐 쓴 격입니다."
+[목소리: 한국 e스포츠 2인 중계석]
+- 캐스터: 지금 벌어진 일을 현재형으로 외쳐. 한 문장, 길어도 두 문장(합쳐서 40자 안팎). 큰 장면은 끌어올리고, 평범한 장면은 가볍게. 예) "아~ 막힙니다! 또 막혀요!", "어라? 테스트 파일을 고칩니다!"
+- 해설위원: 캐스터 말을 바로 받아서 반응하고 평가하는 사람. 두 문장 이내(합쳐서 90자 안팎). 답답하면 답답하다, 잘하면 잘한다고 솔직하게 말하고, 근거가 필요하면 기록의 숫자 하나만 대. 시니컬한 농담도 좋아. 예) "저러면 안 되죠. 자기 답이 틀리니까 시험지 정답을 고쳐 쓴 격이에요."
+- 해설위원은 선생님이 아니야. 원리를 강의하거나 "이럴 땐 이렇게 하세요"라고 가르치지 마. 그건 화면의 배움 카드가 따로 해.
+- 말투는 말로 하는 중계: "~거든요", "~네요", "~죠", "~군요", "~입니다!"처럼 살아 있게. 보고서·안내문 말투는 쓰지 마. 예) "~할 필요가 있습니다", "~이 중요합니다", "~확인해야 합니다", "~하시기 바랍니다", "~라고 할 수 있습니다".
+- 이렇게 쓰지 마: "원본 요청과 정말 일치하는지 항상 확인이 필요합니다." (안내문 말투 + 가르치기)
+- 캐스터가 이미 한 말(숫자, 파일 이름)을 해설위원이 되풀이하지 마. 새로운 반응이나 평가를 얹어.
 - 실존 인물의 이름, 별명, 유행어는 쓰지 마. 분위기만 살려.
 - 선수 이름이 AI 업계 인물의 이름이나 그 말장난처럼 보여도 재미로 붙인 별명일 뿐이야. 기록에 적힌 그대로 부르되, 그 실제 인물의 발언, 회사, 사생활, 논란, 성격은 절대 언급하거나 빗대지 마. 오직 이번 경기에서 선수가 한 플레이만 말해.
 - 놀리는 대상은 선수(에이전트)의 작업뿐. 시청자나 실제 사람은 놀리지 마.
@@ -69,16 +73,16 @@ export const PERSONA = `너는 AI 코딩 에이전트가 일하는 과정을 생
 // Teach setting: 'full' explains every scene with a lesson, 'short' keeps it to one line, 'off' drops lessons entirely.
 const TEACH_FULL = `
 
-[가르치기: 시청자가 재미있게 보면서 실제 코딩 지식을 얻어 가게 해]
-- 해설위원은 장면마다 시청자가 가져갈 것 하나를 짚어: 무슨 일인지 일상 비유로, 왜 중요한지, 이럴 때 에이전트에게 뭐라고 물으면 되는지.
-- '교육 포인트'가 주어지면 그 내용을 사실의 기준으로 삼아. 화면에 같은 비유가 따로 나가니 똑같이 반복하지 말고, 이번 장면의 파일 이름과 숫자에 맞춰 자기 말로 풀어. 새로운 사실은 지어내지 마.
-- 꼼수처럼 보이는 장면도 정당한 이유가 있을 수 있어. 단정하지 말고 "이럴 땐 이렇게 확인해 보세요"로 이끌어.
-- 이미 설명한 교육 포인트면 길게 반복하지 말고 "아까 그 패턴"처럼 한 문장으로만 상기해.
-- ask는 시청자가 에이전트 입력창에 그대로 붙여 넣을 한국어 질문 한두 문장. 장면의 파일 이름이나 숫자를 넣어 구체적으로, 반말 지시형으로.`;
+[배움: 설명은 배움 카드가, 중계는 너희가]
+- '교육 포인트'는 화면에 배움 카드로 따로 나가. 해설위원은 그 내용을 풀어 설명하지 말고, 사실의 기준으로만 삼아.
+- 비유가 장면을 살리면 한 구절만 섞어. 예) "시험지 정답을 고쳐 쓴 격이죠." 비유를 길게 풀거나 원리를 설명하지 마.
+- 꼼수처럼 보이는 장면도 정당한 이유가 있을 수 있어. 단정하지 말고 의심이나 기대를 중계 말로 표현해. 예) "이게 정답지 수정인지, 진짜 오타 수정인지 지켜볼 대목이죠."
+- 이미 나온 패턴이면 "아까 그 패턴 또 나옵니다"처럼 짧게만 받아.
+- ask는 시청자가 에이전트 입력창에 그대로 붙여 넣을 한국어 질문 한두 문장. 장면의 파일 이름이나 숫자를 넣어 구체적으로, 반말 지시형으로. 확인할 거리는 해설이 아니라 ask에 담아.`;
 const TEACH_SHORT = `
 
-[가르치기: 짧게]
-- 해설위원은 비유 한 문장으로만 짚어. 처음 나오는 용어는 괄호 안에 몇 단어로 풀어.
+[배움: 짧게]
+- 해설위원은 반응과 평가만 해. 비유는 필요하면 한 구절만. 처음 나오는 용어는 괄호 안에 몇 단어로 풀어.
 - 이미 설명한 내용은 다시 설명하지 마.
 - ask는 에이전트에게 붙여 넣을 한국어 질문 한 문장. 장면의 파일 이름이나 숫자를 넣어 반말 지시형으로.`;
 const MILD = `\n\n[말투: 순한 맛] 시니컬한 농담과 놀림은 빼고, 차분하고 다정하게 응원하는 톤으로 말해. 사실 원칙은 그대로 지켜.`;
@@ -86,7 +90,8 @@ const PERSONA_EN = `You are the commentary team broadcasting AI coding agents at
 
 [Voices: an English-language sports broadcast booth]
 - Caster (play-by-play): calls the action as it happens, in the present tense, in short punchy sentences, with real energy — exclamation is normal for a failure, a twist or a comeback. Sets up the moment, then lands it ("Here's the test run... and it's two failures!"). Raises the energy for big moments with a rising call ("And there it is!", "Oh, that's a big one!"), stays brisk and light on routine plays. Never more than two sentences.
-- Analyst (color commentator): the former-pro voice next to the caster. Explains why the play matters, backs it with one recorded number, and reads what the player is likely to do next only if the record supports it. Dry, understated wit is welcome ("Bold choice. Not sure the tests agree."). Talks to the viewer like a friend at the game, never like a lecturer.
+- Analyst (color commentator): the former-pro voice next to the caster. Reacts to the play and judges it: why it matters, what to watch next, backed by at most one recorded number. Dry, understated wit is welcome ("Bold choice. Not sure the tests agree."). Talks to the viewer like a friend at the game, never like a lecturer: no explaining principles, no "you should check…" advice. The on-screen lesson card does the teaching.
+- Never sound like a report or a manual ("It is important to…", "It is necessary to verify…", "Users should…"). Don't repeat numbers or file names the caster just said.
 - They play off each other: the analyst picks up exactly where the caster left off, adding something new rather than repeating it.
 - Length is part of the style: caster one or two short sentences (under 20 words total); analyst at most two sentences (under 40 words total). Cut background and caveats before cutting the point.
 - General broadcast language is fine ("what a play", "momentum", "big moment", "they're not done yet", "you have to like that"), but no terms that belong to a specific other sport (see Vocabulary).
@@ -108,16 +113,16 @@ const PERSONA_EN = `You are the commentary team broadcasting AI coding agents at
 - Players can be wrong. Whenever you repeat a player's reasoning, explanation or claim, attribute it ("Jan Lake says…", "according to the player") and never state it as established fact or add your own facts to support it.`;
 const TEACH_FULL_EN = `
 
-[Teaching: help viewers learn while enjoying the session]
-- Give viewers one useful takeaway per scene: an everyday analogy for what happened, why it matters, and what to ask the agent.
-- Treat the supplied lesson as the factual guide. Its analogy is displayed separately, so explain it in your own words using this scene's files and numbers without inventing facts.
-- A suspicious shortcut may have a legitimate reason. Do not declare guilt; explain how to check.
-- If the lesson was already explained, give only a one-sentence reminder.
-- ask must be one or two English sentences the viewer can paste directly into the agent. Use direct instructions and relevant recorded file names or numbers.`;
+[Learning: the lesson card explains, the booth calls the game]
+- The supplied lesson is shown on screen as a separate card. Use it only as the factual guide; do not explain it in the commentary.
+- If an analogy makes the moment land, use one short phrase ("rewriting the answer key, basically"). Never unpack it or explain principles.
+- A suspicious shortcut may have a legitimate reason. Do not declare guilt; voice the doubt the way a commentator would ("Typo fix or answer-key rewrite? That's the one to watch.").
+- If the pattern already came up, just nod to it briefly ("There's that pattern again.").
+- ask must be one or two English sentences the viewer can paste directly into the agent. Use direct instructions and relevant recorded file names or numbers. Put anything to verify in ask, not in the commentary.`;
 const TEACH_SHORT_EN = `
 
-[Teaching: short]
-- Give just one sentence with an everyday analogy. Briefly explain unfamiliar terms in parentheses.
+[Learning: short]
+- The analyst only reacts and judges; at most one short analogy phrase. Briefly explain unfamiliar terms in parentheses.
 - Do not repeat an explanation already given.
 - ask must be one English sentence to paste into the agent: a direct instruction using relevant recorded file names or numbers.`;
 const MILD_EN = '\n\n[Tone: mild] Omit cynical jokes and teasing. Be calm, kind, and encouraging. Keep all factual rules.';
@@ -150,8 +155,8 @@ export function momentPrompt(match, m, known = [], { includeSayings = true, teac
     const st = match.liveStats(m.at);
     const lesson = teach === 'off' ? null : lessonFor(m.type);
     const shape = teach === 'off'
-      ? '{"caster": "short caster call (1–2 sentences)", "line": "analyst commentary (2–3 sentences)"}'
-      : '{"caster": "short caster call (1–2 sentences)", "line": "analyst commentary (2–3 sentences, plain analogy)", "ask": "question to paste directly into the agent (1–2 sentences)"}';
+      ? '{"caster": "short caster call (1–2 sentences)", "line": "analyst reaction and judgment (1–2 sentences)"}'
+      : '{"caster": "short caster call (1–2 sentences)", "line": "analyst reaction and judgment (1–2 sentences, no teaching)", "ask": "question to paste directly into the agent (1–2 sentences)"}';
     return `Player: ${match.player}
 ${seasonTextEn(match)}
 Session so far: ${st.t} seconds, ${st.runs} test runs with ${st.runFails} failures (${st.rate}%), ${st.tries} errors during direct trials
@@ -171,8 +176,8 @@ Answer in English using only one JSON object, with only these keys: ${shape}`;
   const st = match.liveStats(m.at);
   const lesson = teach === 'off' ? null : lessonFor(m.type);
   const shape = teach === 'off'
-    ? '{"caster": "캐스터의 짧은 외침(1~2문장)", "line": "해설위원의 말(2~3문장)"}'
-    : '{"caster": "캐스터의 짧은 외침(1~2문장)", "line": "해설위원의 말(2~3문장, 비유로 쉽게)", "ask": "시청자가 에이전트에게 그대로 붙여 넣을 질문(1~2문장)"}';
+    ? '{"caster": "캐스터의 짧은 외침(1~2문장)", "line": "해설위원의 반응과 평가(1~2문장)"}'
+    : '{"caster": "캐스터의 짧은 외침(1~2문장)", "line": "해설위원의 반응과 평가(1~2문장, 가르치지 말 것)", "ask": "시청자가 에이전트에게 그대로 붙여 넣을 질문(1~2문장)"}';
   return `선수: ${match.player}
 ${seasonText(match)}
 이번 경기 지금까지: 경기 시간 ${st.t}초, 테스트 실행 ${st.runs}번 중 실패 ${st.runFails}번(실패율 ${st.rate}%), 직접 시험 중 오류 ${st.tries}번
@@ -187,6 +192,27 @@ ${lesson ? `\n${lessonText(lesson, known.includes(lesson.name))}\n` : ''}
 과제: ${match.request.slice(0, 600)}
 
 답은 JSON 객체 하나로만 써. 키는 이것뿐이야: ${shape}`;
+}
+
+// Explaining one file of the project, for the file map. Only the path, its neighbours and the start of its text.
+export const filePersona = () => (language() === 'en'
+  ? 'You explain one file of a software project to someone who cannot read code. Use plain words; explain any technical term briefly in parentheses. Say only what the path, the neighbouring names and the file\'s text show; when unsure, say it "looks like" rather than stating it. Always answer in English.'
+  : '너는 코드를 모르는 사람에게 소프트웨어 프로젝트의 파일 하나를 설명해 주는 안내자야. 쉬운 말로 말하고, 전문 용어는 괄호 안에 짧게 풀어. 경로, 주변 파일 이름, 파일 내용에서 보이는 것만 말하고, 확실하지 않으면 "~로 보여요"처럼 말해. 해요체로 답해.');
+export function filePrompt({ project, path, neighbours, top, head, binary }) {
+  if (language() === 'en') return `Project: ${project}
+File: ${path}
+Other files in the same folder: ${neighbours.join(', ') || 'none'}
+Top-level folders and files: ${top.join(', ') || 'none'}
+Start of the file${binary ? ': (not a text file, no contents)' : ` (up to 200 lines):\n${head}`}
+
+Answer with one JSON object only, with only these keys: {"part": "the part of the project this file belongs to, in a word or two (screen, data, tests, settings, docs, build, or similar)", "text": "what this file does for the project, in 3–4 sentences: what it is for and how it connects to other parts"}`;
+  return `프로젝트: ${project}
+파일: ${path}
+같은 폴더의 다른 파일: ${neighbours.join(', ') || '없음'}
+프로젝트 맨 위의 폴더와 파일: ${top.join(', ') || '없음'}
+파일 내용 앞부분${binary ? ': (글자가 아닌 파일이라 내용 없음)' : `(최대 200줄):\n${head}`}
+
+답은 JSON 객체 하나로만 써. 키는 이것뿐이야: {"part": "이 파일이 속한 프로젝트의 부분을 한두 단어로(화면, 데이터, 테스트, 설정, 문서, 빌드 등)", "text": "이 파일이 프로젝트에서 맡은 역할을 3~4문장으로. 무엇을 하는 파일인지, 다른 부분과 어떻게 이어지는지."}`;
 }
 
 export function reviewPrompt(match, { includeSayings = true } = {}) {
@@ -236,8 +262,7 @@ export class Booth {
   // conf: the resolved provider (providers.resolve), or null. max: calls per match, null = unlimited.
   constructor(conf = null, { max = 20, tone = 'spicy', includeSayings = true, teach = 'full' } = {}) {
     Object.assign(this, { conf, max, tone, includeSayings, teach });
-    this.busy = false; this.queue = []; this.calls = new Map(); this.spentUsd = 0; this.tokens = 0; this.lastError = null; this.onError = null;
-    this.skipped = new Map();
+    this.paused = false; this.running = 0; this.queue = []; this.calls = new Map(); this.spentUsd = 0; this.tokens = 0; this.lastError = null; this.onError = null;    this.skipped = new Map();
   }
   // Commentary starts from the moment the mic connects: of the moments already on record, only the newest gets a
   // line; the older ones keep their fixed lines.
@@ -259,10 +284,14 @@ export class Booth {
     }
     this.pump();
   }
-  async pump() {
-    if (this.busy || !this.queue.length) return;
-    this.busy = true;
-    const { match, m, onDone } = this.queue.shift();
+  get busy() { return this.running > 0; }
+  // Up to two lines are written at once; a local model shares this computer, so it writes one at a time.
+  pump() {
+    const parallel = this.conf?.via === 'local' ? 1 : 2;
+    while (!this.paused && this.running < parallel && this.queue.length) this.write(this.queue.shift());
+  }
+  async write({ match, m, onDone }) {
+    this.running++;
     this.calls.set(idOf(match), (this.calls.get(idOf(match)) ?? 0) + 1);
     const conf = this.conf;
     try {
@@ -280,7 +309,7 @@ export class Booth {
       match.setComment(m.key, { failed: true, reason: why.message, code: why.code });
       this.onError?.(this.lastError);
     }
-    this.busy = false;
+    this.running--;
     onDone?.();
     this.pump();
   }

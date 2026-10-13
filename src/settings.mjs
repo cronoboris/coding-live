@@ -14,7 +14,8 @@ export const DEFAULTS = Object.freeze({
   // provider: 'auto' | 'off' | a PROVIDERS id. providers[id]: { via, model, url }. maxCalls: per match, null = unlimited.
   // teach: how much the commentary explains for beginners ('full' | 'short' | 'off').
   commentary: {
-    provider: 'auto', autoOn: false, maxCalls: 20, tone: 'spicy', includeSayings: true, teach: 'full', explain: true,
+    // fileExplain: clicking a file on the file map asks the AI what the file is for (sends the start of the file).
+    provider: 'auto', autoOn: true, maxCalls: 20, tone: 'spicy', includeSayings: true, teach: 'full', explain: true, fileExplain: true,
     providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { via: p.methods[0], model: '', url: '' }])),
   },
   notifications: { enabled: true, decision: true, trick: true, stuck: true, quiet: true, final: true, sound: true },
@@ -27,8 +28,7 @@ const CHOICES = {
   'general.language': ['system', 'ko', 'en'],
   'commentary.provider': ['auto', 'off', ...Object.keys(PROVIDERS)],
   'commentary.tone': ['spicy', 'mild'],
-  'commentary.teach': ['full', 'short', 'off'],
-  'widget.follow': ['auto', 'manual'],
+  'commentary.teach': ['full', 'short', 'off'],  'widget.follow': ['auto', 'manual'],
 };
 
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v);

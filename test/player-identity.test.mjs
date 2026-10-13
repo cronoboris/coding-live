@@ -11,24 +11,32 @@ test('name styles: pun by default, names follow the model company, meme and plai
   assert.deepEqual(['claude-opus-5-5', 'gpt-5', 'codex-mini', 'gemini-2.5-flash', 'grok-4.5', 'llama-4', 'devstral', 'deepseek-v4-pro', 'qwen3-coder-plus', 'kimi-k2', 'glm-5.2', ''].map(companyOf),
     ['anthropic', 'openai', 'openai', 'google', 'xai', 'meta', 'mistral', 'deepseek', 'alibaba', 'moonshot', 'common', 'common']);
   setNameStyle('pun');
-  assert.ok(nameList('claude-opus-5-5').includes(sessionName('s1', new Set(), 'claude-opus-5-5')));
-  assert.ok(nameList('claude-opus-5-5').includes('다리오 아무데이'));
+  assert.equal(sessionName(new Set(), 'claude-opus-5-5'), '다리오 아무데이', 'the first player gets the top name');
   setNameStyle('meme');
-  assert.ok(nameList('gpt-5').includes(sessionName('s1', new Set(), 'gpt-5')));
-  assert.ok(nameList('gpt-5').includes('샘 알트만'));
+  assert.equal(sessionName(new Set(), 'gpt-5'), '샘 알트만');
   setNameStyle('plain');
-  assert.ok(NAMES.includes(sessionName('s1', new Set(), 'gpt-5')));
+  assert.equal(sessionName(new Set(), 'gpt-5'), NAMES[0]);
   setNameStyle('pun');
   const one = nameList('deepseek-v4-pro');
   assert.equal(one.length, 1);
-  assert.equal(sessionName('a', new Set(one), 'deepseek-v4-pro'), `${one[0]} 2`, 'a small company list numbers repeats');
+  assert.equal(sessionName(new Set(one), 'deepseek-v4-pro'), `${one[0]} 2`, 'a small company list numbers repeats');
 });
 import { groupProjects, buildProject } from '../src/project.mjs';
 
-test('names are deterministic and allocate collisions to a free name', () => {
+test('names go down the list in order and skip names already taken', () => {
   assert.ok(NAMES.length >= 40);
-  assert.equal(sessionName('same'), sessionName('same'));
-  assert.notEqual(sessionName('same', new Set([sessionName('same')])), sessionName('same'));
+  const list = nameList('claude-haiku-5-5');
+  assert.equal(sessionName(new Set([list[0]]), 'claude-haiku-5-5'), list[1]);
+  assert.equal(sessionName(new Set([list[0], list[1]]), 'claude-haiku-5-5'), list[2]);
+});
+
+test('in a project the lead gets the top name and subagents follow by start time, whatever their keys', () => {
+  const snap = (t0, parent) => { const m = new Match(); m.push({ type: 'model', at: t0, model: 'claude-haiku-5-5' }); if (parent) m.push({ type: 'role', at: t0, parent }); m.push({ type: 'prompt', at: t0, text: 'task' }); return m.snapshot(t0 + 1000); };
+  const p = buildProject({ key: 'k', name: 'shop', cwd: '/w', players: [{ key: 'zz-lead' }, { key: 'aa-late', parent: 'zz-lead' }, { key: 'mm-early', parent: 'zz-lead' }] },
+    [{ key: 'aa-late', snap: snap(3000, 'zz-lead') }, { key: 'mm-early', snap: snap(2000, 'zz-lead') }, { key: 'zz-lead', snap: snap(1000) }]);
+  const list = nameList('claude-haiku-5-5');
+  const name = key => p.players.find(x => x.key === key).name;
+  assert.deepEqual([name('zz-lead'), name('mm-early'), name('aa-late')], list.slice(0, 3));
 });
 
 test('a lead with more subagents than the player limit stays in its match', () => {

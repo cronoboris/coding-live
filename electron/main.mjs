@@ -251,6 +251,7 @@ function wireIpc() {
   handle('cl:unwatch', (_e, id) => { subs.get(id)?.(); subs.delete(id); });
   handle('cl:mic', (_e, key, on) => live.setMic(key, on));
   handle('cl:review', (_e, key) => live.review(key));
+  handle('cl:explain-file', (_e, key, path) => live.explainFile(String(key), String(path)));
   handle('cl:demo', () => live.startDemo());
   handle('cl:mic-status', () => live.micStatus());
   handle('cl:mic-test', (_e, provider) => live.testMic(typeof provider === 'string' ? provider : null));

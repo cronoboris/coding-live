@@ -1,17 +1,18 @@
 // The broadcast service shared by the desktop app (IPC) and the browser mode (HTTP): session discovery,
 // one live snapshot stream per watched match, the commentary booth, post-match reviews, settings and alerts.
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { Hub } from './hub.mjs';
-import { Booth } from './mic.mjs';
-import { LEGACY, PROVIDERS, describe, resolve, status as providerStatus, test as testProvider } from './providers.mjs';
+import { Booth, filePersona, filePrompt } from './mic.mjs';
+import { LEGACY, PROVIDERS, ask, describe, explain as explainError, extractJson, resolve, status as providerStatus, test as testProvider } from './providers.mjs';
 import { envSecrets } from './secrets.mjs';
 import { demoAdapter, playDemo, demoPlaying } from './demo.mjs';
 import { Settings } from './settings.mjs';
 import { groupProjects, buildProject } from './project.mjs';
 import { parseKey } from './hub.mjs';
-import { dirname, join, basename } from 'node:path';
+import { dirname, join, basename, relative, resolve as resolvePath, sep } from 'node:path';
 import { recordedCompactions, momentEnabled, momentSettings } from './core/moments.mjs';
 import { setNameStyle } from './core/names.mjs';
 import { setLanguage, language, t } from './i18n/index.mjs';
@@ -42,7 +43,7 @@ export class Live {
     this.locale = locale;
     this.hub = hub; this.settings = settings; this.backend = null; this.booth = new Booth(null); this.secrets = envSecrets({});
     this.micOn = new Set(); this.reviews = new Map(); this.alertSubs = new Map(); this.onAlert = null;
-    this.compactionFiles = new WeakMap();
+    this.compactionFiles = new WeakMap(); this.restored = new WeakSet(); this.fileNotes = new Map();
     this.momentSettings = momentSettings(settings.value?.moments);
     setNameStyle(settings.value?.general?.nameStyle);
     setLanguage(settings.value?.general?.language, this.locale);
@@ -108,7 +109,7 @@ export class Live {
       const p = project();
       // Players who left the roster after being watched still contribute their plays.
       const departed = p ? p.left.map(l => l.key).filter(k => players.get(k)?.snap && !order.includes(k)) : [];
-      if (p) send(buildProject(p, [...order, ...departed].map(k => ({ key: k, snap: players.get(k)?.snap ?? null })), (key, moment) => {
+      if (p) send(named(buildProject(p, [...order, ...departed].map(k => ({ key: k, snap: players.get(k)?.snap ?? null })), (key, moment) => {
         const match = this.hub.tails.get(key)?.match;
         if (!match) return null;
         match.setMomentSettings(this.momentSettings);
@@ -118,9 +119,14 @@ export class Live {
           scenes.add(moment.scene); clashScenes.set(match, scenes);
         }
         const existing = match.moments.find(m => m.type === moment.type && m.eventAt <= moment.eventAt && m.lastAt >= moment.eventAt);
-        if (this.micOn.has(key)) this.booth.cover(match, schedule);
+        if (this.micOn.has(key)) this.booth.cover(match, () => { this.saveComments(key, match); schedule(); });
         return match.comments.get(existing?.key ?? `${moment.type}@${moment.eventAt}`) ?? null;
-      }, this.momentSettings));
+      }, this.momentSettings)));
+    };
+    // Each player's match takes its name from the project, so its commentary calls the player what the screen does.
+    const named = snap => {
+      for (const pl of [...snap.players, ...(snap.left ?? [])]) { const match = this.hub.tails.get(pl.key)?.match; if (match && pl.name) match.assignedName = pl.name; }
+      return snap;
     };
     const schedule = () => { if (!timer) timer = setTimeout(flush, 300); };
     const sync = () => {
@@ -178,8 +184,13 @@ export class Live {
           const records = identity.agent === 'mixdog' ? [JSON.parse(text)] : text.split('\n').filter(Boolean).flatMap(line => {
             try { return [JSON.parse(line)]; } catch (error) { if (error instanceof SyntaxError) return []; throw error; }
           });
-          for (const event of recordedCompactions(identity.agent, records))
-            tail.match.detected(tail.match.tracker.compact(event.count), Number.isFinite(event.at) ? event.at : tail.match.lastAt);
+          // A compaction sits where it happened in the feed, not at the end where it was read.
+          const feed = tail.match.feed;
+          for (const event of recordedCompactions(identity.agent, records)) {
+            const timed = Number.isFinite(event.at);
+            const index = timed ? Math.max(0, feed.findLastIndex(c => c.at <= event.at)) : Math.max(0, feed.length - 1);
+            tail.match.detected(tail.match.tracker.compact(event.count), timed ? event.at : tail.match.lastAt, index);
+          }
           this.compactionFiles.set(tail.match, signature);
         }
       } catch (error) { if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error; }
@@ -205,18 +216,41 @@ export class Live {
 
   // Calls `send(snapshot)` now and whenever the match changes (throttled), plus a heartbeat for clock-driven
   // states like "quiet". Resolves to an unsubscribe function, or null for an unknown session.
+  // AI lines survive a restart: saved per session next to the settings file, restored when the session is watched,
+  // so a reopened match neither falls back to fixed lines nor pays for the same line twice.
+  commentaryFile(key) { return this.settings.file ? join(dirname(this.settings.file), 'commentary', `${createHash('sha1').update(key).digest('hex')}.json`) : null; }
+  restoreComments(key, match) {
+    const file = this.commentaryFile(key);
+    if (!file || this.restored.has(match.comments)) return;
+    this.restored.add(match.comments);
+    let saved;
+    try { saved = JSON.parse(readFileSync(file, 'utf8')); } catch (error) { if (error.code === 'ENOENT' || error instanceof SyntaxError) return; throw error; }
+    for (const [k, v] of Object.entries(saved ?? {})) if (!match.comments.has(k) && typeof v?.caster === 'string' && typeof v?.line === 'string') match.comments.set(k, v);
+  }
+  saveComments(key, match) {
+    const file = this.commentaryFile(key);
+    if (!file) return;
+    mkdirSync(dirname(file), { recursive: true });
+    const tmp = `${file}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(Object.fromEntries([...match.comments].filter(([, v]) => typeof v?.caster === 'string'))));
+    renameSync(tmp, file);
+  }
+  // What to run when the booth finishes a line for this session.
+  lineDone(key, tail) { return () => { this.saveComments(key, tail.match); this.hub.emit('update', key); }; }
+
   async subscribe(key, send, { background = false } = {}) {
     const tail = await this.hub.watch(key);
     if (!tail) return null;
+    this.restoreComments(key, tail.match);
     if (!background && this.backend && this.settings.value.commentary.autoOn && !tail.match.finished) this.setMic(key, true);
     let timer = null, sentVersion = -1, closed = false;
-    const flush = () => { timer = null; if (closed) return; const s = this.snapshot(key); if (s) { if (this.micOn.has(key)) this.booth.cover(tail.match, () => this.hub.emit('update', key)); send(s); sentVersion = tail.match.version; } };
+    const flush = () => { timer = null; if (closed) return; const s = this.snapshot(key); if (s) { if (this.micOn.has(key)) this.booth.cover(tail.match, this.lineDone(key, tail)); send(s); sentVersion = tail.match.version; } };
     const schedule = () => { if (!timer) timer = setTimeout(flush, 250); };
     const onUpdate = k => {
       if (k !== key) return;
       tail.match.setMomentSettings(this.momentSettings);
       this.workerOutcome(key, tail.match);
-      if (this.micOn.has(key)) this.booth.cover(tail.match, () => this.hub.emit('update', key));
+      if (this.micOn.has(key)) this.booth.cover(tail.match, this.lineDone(key, tail));
       schedule();
     };
     this.hub.on('update', onUpdate);
@@ -229,9 +263,47 @@ export class Live {
     const tail = this.hub.tails.get(key);
     if (!tail) return { error: 'not watching this match' };
     tail.match.setMomentSettings(this.momentSettings);
-    if (on && this.backend) { if (!this.micOn.has(key)) this.booth.connect(tail.match); this.micOn.add(key); this.booth.cover(tail.match, () => this.hub.emit('update', key)); } else this.micOn.delete(key);
+    if (on && this.backend) { if (!this.micOn.has(key)) this.booth.connect(tail.match); this.micOn.add(key); this.booth.cover(tail.match, this.lineDone(key, tail)); } else this.micOn.delete(key);
     this.hub.emit('update', key);
     return { on: this.micOn.has(key), backend: this.backend };
+  }
+
+  // What a project file is for, in plain words: from its path, the names around it and the start of its text.
+  // Only files inside the project folder; answers are kept per file version and language.
+  async explainFile(pkey, path) {
+    if (!this.settings.value.commentary.fileExplain) return { error: 'off' };
+    const conf = this.booth.conf;
+    if (!conf) return { error: 'nomic' };
+    const p = this.projects().find(x => x.key === pkey);
+    if (!p?.cwd) return { error: 'missing' };
+    // Contained after links are followed, so a link inside the project cannot reach a file outside it.
+    let root, file, stat;
+    try { root = realpathSync(p.cwd); file = realpathSync(resolvePath(root, String(path ?? ''))); stat = statSync(file); } catch { return { error: 'missing' }; }
+    if (!file.startsWith(root + sep) || !stat.isFile()) return { error: 'missing' };
+    const cacheKey = `${language()}\0${file}\0${stat.mtimeMs}:${stat.size}`;
+    if (this.fileNotes.has(cacheKey)) return this.fileNotes.get(cacheKey);
+    const buf = Buffer.alloc(Math.min(stat.size, 24_000));
+    const fd = openSync(file, 'r');
+    try { readSync(fd, buf, 0, buf.length, 0); } finally { closeSync(fd); }
+    // Text only: valid UTF-8 (a character cut at the read limit is fine) without NUL bytes.
+    let text = null;
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf, { stream: true }); } catch {}
+    const binary = text === null || text.includes('\u0000');
+    const names = dir => { try { return readdirSync(dir).filter(n => !n.startsWith('.')).slice(0, 40); } catch { return []; } };
+    const prompt = filePrompt({
+      project: p.name, path: relative(root, file), binary,
+      neighbours: names(dirname(file)).filter(n => n !== basename(file)), top: names(root),
+      head: binary ? '' : text.split('\n').slice(0, 200).join('\n'),
+    });
+    try {
+      const r = await ask(conf, prompt, filePersona());
+      this.booth.count(r);
+      const j = extractJson(r.text);
+      if (typeof j?.text !== 'string' || !j.text.trim()) return { error: 'format', message: t('provider.badReply') };
+      const note = { part: String(j.part ?? '').slice(0, 40), text: j.text.trim().slice(0, 1200), ai: describe(conf) };
+      this.fileNotes.set(cacheKey, note);
+      return note;
+    } catch (e) { return { error: 'call', message: explainError(e, conf).message }; }
   }
 
   async review(key) {

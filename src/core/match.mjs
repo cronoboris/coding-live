@@ -39,7 +39,8 @@ export class Match {
     this.momentSettings = momentSettings(moments);
   }
 
-  get name() { return this.recordedName || sessionName(this.id, new Set(), this.model); }
+  // assignedName: the name this player has in its project match, so commentary uses the name on screen.
+  get name() { return this.recordedName || this.assignedName || sessionName(new Set(), this.model); }
   get player() { return `${this.name} (${playerName(this.model)})`; }
   get project() { return this.cwd ? this.cwd.replace(/^file:\/\//, '').split(/[\\/]/).filter(Boolean).at(-1) ?? this.cwd : ''; }
   get season() { return SEASON[this.model] ?? null; }

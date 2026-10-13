@@ -31,10 +31,10 @@ test('English company names and Korean lists survive runtime language changes', 
         assert.doesNotMatch(names.join(''), /[가-힣]/);
       }
       assert.doesNotMatch(nameList(model, 'plain').join(''), /[가-힣]/);
-      assert.equal(sessionName('stable', new Set(), model), sessionName('stable', new Set(), model));
+      assert.equal(sessionName(new Set(), model), nameList(model)[0]);
       const used = new Set();
       for (let i = 0; i < count + 2; i++) {
-        const name = sessionName('stable', used, model);
+        const name = sessionName(used, model);
         assert.ok(!used.has(name));
         used.add(name);
       }

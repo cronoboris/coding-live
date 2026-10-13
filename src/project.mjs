@@ -64,11 +64,14 @@ export function buildProject(project, players, onMoment = null, momentSettings =
   const feed = [], moments = [], pushes = [];
   const names = new Map(), used = new Set();
   const unique = name => { if (used.has(name)) { let n = 2; while (used.has(`${name} ${n}`)) n++; name = `${name} ${n}`; } used.add(name); return name; };
-  for (const { key, snap } of [...ready].sort((a, b) => Number(!!b.snap.recordedName) - Number(!!a.snap.recordedName) || a.key.localeCompare(b.key)))
-    names.set(key, unique(snap.recordedName || sessionName(key, used, snap.model)));
+  // Names go down each company's list in order: recorded names first, then leads, then subagents, each by start time.
+  const isSub = ({ key, snap }) => Number(!!(snap.parent ?? [...(project.players ?? []), ...(project.left ?? [])].find(p => p.key === key)?.parent));
+  const byRank = (a, b) => Number(!!b.snap.recordedName) - Number(!!a.snap.recordedName) || isSub(a) - isSub(b) || (a.snap.startedAt ?? Infinity) - (b.snap.startedAt ?? Infinity) || a.key.localeCompare(b.key);
+  for (const { key, snap } of [...ready].sort(byRank))
+    names.set(key, unique(snap.recordedName || sessionName(used, snap.model)));
   // Subagents that left before anyone watched them: named from the session list alone.
   const unseen = (project.left ?? []).filter(l => !ready.some(p => p.key === l.key));
-  for (const l of unseen) names.set(l.key, unique(l.name || sessionName(l.key, used, l.model)));
+  for (const l of unseen) names.set(l.key, unique(l.name || sessionName(used, l.model)));
   const leftKeys = new Set((project.left ?? []).map(l => l.key));
   let costUsd = 0, costKnown = false, fails = 0, pass = 0, fail = 0;
   const out = ready.map(({ key, snap: s }, idx) => {

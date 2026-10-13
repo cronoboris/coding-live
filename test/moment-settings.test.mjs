@@ -42,7 +42,7 @@ test('the central creation filter blocks every disabled type and its commentary'
     assert.equal(m.comments.size, 0, type);
     assert.equal(m.snapshot().moments.length, 0, type);
     const booth = new Booth({ provider: 'compatible', via: 'api' });
-    booth.busy = true;
+    booth.paused = true;
     booth.cover(m, () => {});
     assert.equal(booth.queue.length, 0, type);
   }
@@ -82,6 +82,31 @@ test('project generation filters stale snapshots and never emits disabled clashe
   assert.ok(!p.pushes.some(p => p.kind === 'quiet'));
 });
 
+test('AI lines are saved per session and restored after a restart; unfinished lines are not', async t => {
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = mkdtempSync(join(tmpdir(), 'coding-live-lines-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const settings = () => ({ value: sanitize({}), file: join(dir, 'settings.json') });
+  const before = new Match();
+  emit(before, 'first-fail'); emit(before, 'var', 70000);
+  const [fail, edit] = before.moments.map(m => m.key);
+  before.setComment(fail, { caster: '외침', line: '해설', ask: '질문', ai: 'AI' });
+  before.setComment(edit, { loading: true });
+  const first = new Live(fakeHub(before), settings());
+  first.saveComments(key, before);
+  const after = new Match();
+  emit(after, 'first-fail'); emit(after, 'var', 70000);
+  const restarted = new Live(fakeHub(after), settings());
+  restarted.restoreComments(key, after);
+  assert.deepEqual(after.comments.get(fail), { caster: '외침', line: '해설', ask: '질문', ai: 'AI' });
+  assert.ok(!after.comments.has(edit), 'a line still being written is asked again');
+  const booth = new Booth({ provider: 'compatible', via: 'api' });
+  booth.paused = true; booth.connect(new Match()); booth.cover(after, () => {});
+  assert.ok(!booth.queue.some(q => q.m.key === fail), 'a restored line is not paid for twice');
+});
+
 test('live settings purge queued commentary and late replies, then filter rebuilt matches', async () => {
   const m = new Match();
   const settings = { value: sanitize({ commentary: { provider: 'off' } }) };
@@ -89,7 +114,7 @@ test('live settings purge queued commentary and late replies, then filter rebuil
   live.booth = new Booth({ provider: 'compatible', via: 'api' });
   live.booth.connect(m);
   emit(m, 'assign'); emit(m, 'report');
-  live.booth.busy = true;
+  live.booth.paused = true;
   live.booth.cover(m, () => {});
   assert.equal(live.booth.queue.length, 2);
   settings.value = sanitize({ commentary: { provider: 'off' }, moments: { assign: false } });
@@ -114,7 +139,7 @@ test('live update filters rebuilt matches before Booth cover; disabled types can
   try {
     live.micOn.add(key);
     live.booth.conf = { provider: 'compatible', via: 'api' };
-    live.booth.busy = true;
+    live.booth.paused = true;
     const rebuilt = new Match(); emit(rebuilt, 'decision');
     hub.tails.get(key).match = rebuilt;
     hub.emit('update', key);

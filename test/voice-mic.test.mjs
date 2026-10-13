@@ -23,7 +23,7 @@ test('English prompts preserve settings, facts, privacy and JSON contracts', () 
       assert.match(text, /parody nicknames only/);
       assert.match(text, /never bring up.*real person/);
       assert.match(text, /do not use goal, VAR, tackle, referee, coach, kickoff, timeout, or penalty/);
-      assert.equal(text.includes('[Teaching:'), teach !== 'off');
+      assert.equal(text.includes('[Learning:'), teach !== 'off');
       assert.equal(text.includes('[Tone: mild]'), tone === 'mild');
       const prompt = momentPrompt(match, { type: 'decision', at: 0, note: 'PRIVATE_DECISION' }, [], { teach, includeSayings: false });
       assert.doesNotMatch(prompt, /[가-힣]|PRIVATE_/);

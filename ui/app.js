@@ -12,14 +12,14 @@ let projects = [];
 const view = { filter: store.get('cl-filter') || 'all', agent: store.get('cl-agent') || '', query: '' };
 let current = null; // { key, stop, snap, rendered, tab, sel }
 let shownError = null;
-let prefs = { teach: 'full', explain: true, nameStyle: 'pun' }; // settings the match view needs
+let prefs = { teach: 'full', explain: true, fileExplain: true, nameStyle: 'pun' }; // settings the match view needs
 let shownLang = 'ko'; // the language the page is drawn in (the HTML ships in Korean)
 // A language change re-translates the static page and redraws everything that was built in the old language.
 const applyPrefs = s => {
   applyTheme(s.general.theme);
   const lang = applyLanguage(s, api.locale);
   if (lang !== shownLang) { shownLang = lang; $('fmLegend').replaceChildren(); chromeText(); renderList(); if (current?.snap) render(); else if (!current) renderWelcome(); }
-  prefs.teach = s.commentary?.teach ?? 'full'; prefs.explain = s.commentary?.explain !== false; prefs.nameStyle = s.general.nameStyle ?? 'pun';
+  prefs.teach = s.commentary?.teach ?? 'full'; prefs.explain = s.commentary?.explain !== false; prefs.fileExplain = s.commentary?.fileExplain !== false; prefs.nameStyle = s.general.nameStyle ?? 'pun';
 };
 const parodyNote = () => (prefs.nameStyle === 'plain' ? null : el('p', 'parody', t('선수 이름은 재미를 위한 패러디이며 실제 인물과 관계없어요.')));
 const TRICK_IDS = ['answer-key', 'skip-test', 'weaker-test', 'silence', 'mask'];
@@ -176,7 +176,37 @@ function renderFiles(s) {
     const ld = el('span'); ld.append(el('i', 'last'), document.createTextNode(t('마지막으로 만진 파일'))); lg.append(ld);
     const tr = el('span'); tr.append(el('i', 'trail'), document.createTextNode(t('최근 이동'))); lg.append(tr);
   }
-  renderFileMap($('filemap'), s, { sel: current.sel, onSelect: select, state: current.map });
+  renderFileMap($('filemap'), s, { sel: current.sel, onSelect: select, onFile: showFileNote, state: current.map });
+}
+
+// A file tile opens a small note under it: what the players did with it, then the AI's take on what the file is for.
+async function showFileNote(f, tile, facts) {
+  const box = $('filemap');
+  const open = box.querySelector('.fnote');
+  open?.remove();
+  if (open?.dataset.path === f.path) return; // clicking the same file again closes it
+  const pop = el('div', 'fnote'); pop.dataset.path = f.path;
+  const x = tile.parentElement.offsetLeft + tile.offsetLeft, y = tile.parentElement.offsetTop + tile.offsetTop + tile.offsetHeight + 6;
+  pop.style.left = `${Math.max(4, Math.min(x, box.clientWidth - 364))}px`; pop.style.top = `${y}px`;
+  const close = el('button', 'x', '×'); close.type = 'button'; close.setAttribute('aria-label', t('닫기')); close.onclick = () => pop.remove();
+  const hd = el('div', 'hd'); hd.append(el('b', null, f.path), close);
+  const body = el('div', 'body');
+  const settingsLink = () => { const a = el('button', 'link', t('해설 설정')); a.type = 'button'; a.onclick = () => openSettings('commentary'); return a; };
+  pop.append(hd, el('div', 'facts', facts), body);
+  box.append(pop);
+  if (!prefs.fileExplain) { body.append(document.createTextNode(`${t('파일 AI 설명이 꺼져 있어요.')} `), settingsLink()); return; }
+  const wait = el('span', 'faint'); wait.append(el('span', 'spinner'), document.createTextNode(t('AI가 파일을 읽는 중…'))); body.append(wait);
+  const r = await api.explainFile(current.key, f.path);
+  if (!pop.isConnected) return;
+  body.replaceChildren();
+  if (!r || r.error) {
+    const why = !r ? t('설명을 받지 못했어요.') : r.error === 'nomic' ? t('해설 AI가 연결되지 않았어요') : r.error === 'off' ? t('파일 AI 설명이 꺼져 있어요.') : r.error === 'missing' ? t('이 파일을 찾지 못했어요.') : r.message ?? t('설명을 받지 못했어요.');
+    body.append(document.createTextNode(`${why} `));
+    if (r && ['nomic', 'off', 'call', 'format'].includes(r.error)) body.append(settingsLink());
+    return;
+  }
+  if (r.part) body.append(el('span', 'chip', r.part));
+  body.append(el('p', null, r.text), el('div', 'src', t('AI 설명 · {ai}', { ai: r.ai })));
 }
 
 // ---- side: commentary, report, players -----------------------------------------------------

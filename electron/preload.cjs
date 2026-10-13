@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('codingLive', {
   },
   setMic: (key, on) => ipcRenderer.invoke('cl:mic', String(key), !!on),
   review: key => ipcRenderer.invoke('cl:review', String(key)),
+  explainFile: (key, path) => ipcRenderer.invoke('cl:explain-file', String(key), String(path)),
   startDemo: () => ipcRenderer.invoke('cl:demo'),
   micStatus: () => ipcRenderer.invoke('cl:mic-status'),
   testMic: provider => ipcRenderer.invoke('cl:mic-test', provider == null ? null : String(provider)),

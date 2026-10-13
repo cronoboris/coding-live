@@ -72,7 +72,7 @@ const stageOf = p => (p.finished && !p.lastTestFailed && p.lastScore ? 4 : p.lan
 const setBox = (n, r) => { n.style.left = `${r.x}px`; n.style.top = `${r.y}px`; n.style.width = `${Math.max(0, r.w)}px`; n.style.height = `${Math.max(0, r.h)}px`; };
 
 // state: { hops: Map(playerKey -> [path]) } kept per match by the caller.
-export function renderFileMap(box, s, { sel = null, onSelect, state }) {
+export function renderFileMap(box, s, { sel = null, onSelect, onFile, state }) {
   box.classList.add('tm');
   if (!s.files.length) {
     box.replaceChildren(el('div', 'fm-empty', t('선수들이 아직 파일을 건드리지 않았어요.')));
@@ -155,7 +155,9 @@ export function renderFileMap(box, s, { sel = null, onSelect, state }) {
       fn.firstChild.textContent = f.name;
       fn.lastChild.textContent = f.status === 'write' ? (f.edits ? edited(f.edits) : t('씀')) : STATUS[f.status] ? status(f.status) : '';
       const who = [...new Set(f.players.map(x => players.get(x.key)?.name).filter(Boolean))];
-      fn.title = `${f.path}\n${status(f.status)}${f.edits ? ` · ${edited(f.edits)}` : ''}${who.length ? ` · ${who.join(', ')}` : ''}${f.clash ? `\n${t('여러 선수가 이 파일을 고쳤어요')}` : ''}`;
+      const facts = `${status(f.status)}${f.edits ? ` · ${edited(f.edits)}` : ''}${who.length ? ` · ${who.join(', ')}` : ''}${f.clash ? `\n${t('여러 선수가 이 파일을 고쳤어요')}` : ''}`;
+      fn.title = `${f.path}\n${facts}`;
+      if (onFile) { fn.setAttribute('role', 'button'); fn.tabIndex = 0; fn.onclick = () => onFile(f, fn, facts); fn.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onFile(f, fn, facts); } }; }
       tiles.set(f.path, { x: d.box.x + f.box.x, y: d.box.y + f.box.y, w: f.box.w, h: f.box.h });
     }
     [...dn.querySelectorAll('.tf')].forEach(n => { if (!seenFiles.has(n.dataset.path)) n.remove(); });

@@ -60,12 +60,12 @@ export const setNameStyle = s => { style = NAME_STYLES.includes(s) ? s : 'pun'; 
 export const nameStyle = () => style;
 export const nameList = (model, s = style) => (s === 'plain' ? (language() === 'en' ? NAMES_EN : NAMES) : (language() === 'en' ? PEOPLE_EN : PEOPLE)[companyOf(model)].map(([real, pun]) => (s === 'meme' ? real : pun)));
 
-export function sessionName(id, used = new Set(), model = '') {
+// The first free name in list order. Each company's list runs from the top of the company down, so the first player
+// gets the top name and later players (subagents) the next ones; a list that runs out numbers its repeats.
+export function sessionName(used = new Set(), model = '') {
   const list = nameList(model);
-  let hash = 2166136261;
-  for (const ch of String(id ?? '')) hash = Math.imul(hash ^ ch.codePointAt(0), 16777619) >>> 0;
   for (let i = 0; ; i++) {
-    const name = list[(hash + i) % list.length] + (i >= list.length ? ` ${Math.floor(i / list.length) + 1}` : '');
+    const name = list[i % list.length] + (i >= list.length ? ` ${Math.floor(i / list.length) + 1}` : '');
     if (!used.has(name)) return name;
   }
 }

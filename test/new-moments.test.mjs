@@ -59,7 +59,7 @@ test('new moments enter the existing Booth queue and obey its limit', () => {
   const b = new Booth({ provider: 'compatible', via: 'api' }, { max: 0 });
   b.cover(m, () => {});
   assert.equal(b.queue.length, 0);
-  b.max = 1; b.busy = true;
+  b.max = 1; b.paused = true;
   b.cover(m, () => {});
   assert.equal(b.queue[0].m.type, 'report');
   m.addMoment('assign', 0, 'next', 3000);
@@ -67,11 +67,34 @@ test('new moments enter the existing Booth queue and obey its limit', () => {
   assert.equal(b.queue.length, 1);
 });
 
+test('two lines are written at once, one for a local model', async () => {
+  const m = new Match({ id: 'k' });
+  const b = new Booth({ provider: 'compatible', via: 'api' });
+  b.connect(m);
+  m.addMoment('compact', 0, 'summary', 1000); m.addMoment('first-fail', 0, 'fail', 2000); m.addMoment('assign', 0, 'helper', 3000); m.addMoment('var', 0, 'test edit', 4000);
+  b.paused = true;
+  b.cover(m, () => {});
+  assert.deepEqual(b.queue.map(q => q.m.type), ['var', 'assign', 'first-fail', 'compact'], 'every enabled moment, newest first');
+  let release; const gate = new Promise(r => { release = r; });
+  b.write = async () => { b.running++; await gate; b.running--; };
+  b.paused = false; b.pump();
+  assert.equal(b.running, 2);
+  release(); await gate;
+  const local = new Booth({ provider: 'ollama', via: 'local' });
+  local.paused = true; local.cover(new Match({ id: 'l' }), () => {});
+  const n = new Match({ id: 'l' }); local.connect(n);
+  n.addMoment('first-fail', 0, 'a', 1000); n.addMoment('again', 0, 'b', 70000);
+  local.cover(n, () => {});
+  local.write = async () => { local.running++; };
+  local.paused = false; local.pump();
+  assert.equal(local.running, 1);
+});
+
 test('on connect only the newest recorded moment is queued; later moments jump ahead, newest first', () => {
   const m = new Match();
   m.addMoment('assign', 0, 'old', 1000); m.addMoment('instruction', 0, 'older but recorded', 2000); m.addMoment('report', 0, 'latest', 3000);
   const b = new Booth({ provider: 'compatible', via: 'api' });
-  b.busy = true;
+  b.paused = true;
   b.cover(m, () => {});
   assert.deepEqual(b.queue.map(q => q.m.type), ['report']);
   assert.ok(!m.comments.has(m.moments[0].key), 'older moments keep their fixed lines');
@@ -84,7 +107,7 @@ test('a reply written for a rebuilt session shows on the new match; compaction k
   const before = new Match({ id: 'session' });
   before.addMoment('report', 0, 'done', 1000);
   const b = new Booth({ provider: 'compatible', via: 'api' });
-  b.busy = true;
+  b.paused = true;
   b.cover(before, () => {});
   const key = before.moments[0].key;
   // The hub rebuilds the session's Match from its file and shares the commentary map.

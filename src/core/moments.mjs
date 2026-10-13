@@ -67,7 +67,6 @@ export const MOMENT_GROUPS = [
   group('progress', 'quiet thinking cost compact long-run'),
   group('user', 'decision instruction waiting denied'),
 ];
-
 export const pipeRun = command => {
   const text = String(command ?? '');
   if (/^(?:bash\s+<\(\s*(?:curl|wget)\b|iex\s*\(\s*iwr\b)/i.test(text.trim())) return true;
@@ -177,8 +176,8 @@ export class MomentTracker {
 export function recordedCompactions(agent, records) {
   if (agent === 'mixdog') {
     const doc = records[0];
-    const count = doc?.compaction?.compactCount;
-    return Number.isInteger(count) && count > 0 ? [{ type: 'compact', count }] : [];
+    const count = doc?.compaction?.compactCount, at = doc?.compaction?.lastCompactAt;
+    return Number.isInteger(count) && count > 0 ? [{ type: 'compact', count, ...(Number.isFinite(at) ? { at } : {}) }] : [];
   }
   let found = [];
   if (agent === 'claude-code') {

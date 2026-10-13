@@ -19,7 +19,8 @@ The goal: even if you can't read code, you can tell how far the work has gotten,
   Your project's files spread out as a treemap, with every file name shown.\
   The file a player is on right now is the largest, and recently touched files shrink back slowly.\
   Player chips move to the file they're working on and show their current stage (Reading, Writing, Testing, Fixing a failure, Passing).\
-  Files edited by two players are flagged.
+  Files edited by two players are flagged.\
+  Click a file and the AI explains what it does for the project.
 
 - **Multiple players, helper players**\
   Subagents join as helper players under the player who sent them, like "engine ↳ helping Dario Anyday · heavy-worker".
@@ -134,7 +135,7 @@ Changes are saved right away.
   Turn each agent on or off, set its history folder, see how many matches were found
 
 - **Commentary**\
-  Provider with each provider's connection method, model, API key and test button; turn on for new matches; tone (Spicy, Mild); tool and command explanations; beginner tips (Detailed, Short, Off); commentary limit per match (10 to 100, or no limit); what you've spent
+  Provider with each provider's connection method, model, API key and test button; turn on for new matches (on by default); tone (Spicy, Mild); tool and command explanations; AI file notes; beginner tips (Detailed, Short, Off); commentary limit per match (10 to 100, or no limit); what you've spent
 
 - **Moments**\
   Choose which key moments to catch, one by one or by group (Tests, Worth checking, Subagents, Files and commands, Progress, User input).
@@ -189,9 +190,10 @@ If it fails, it tells you why (not installed, not signed in, bad key, wrong mode
 - The **commentary limit per match** can be 10, 20, 50, 100 or no limit.\
   Past the limit, or if the connection fails, commentary falls back to built-in lines; lesson cards and everything else keep working.
 
-Through a Claude Code login (Haiku), each moment takes 20–40 seconds and about $0.03–0.07 by Claude Code's own cost report (the first call costs more).\
-Claude Code sends its own instructions along, so it is heavier than calling the API with a key.\
-Ollama is free.
+Through a Claude Code login (Haiku), each moment takes about 5 seconds and about $0.005 by Claude Code's own cost report.\
+Calling the API directly with a key is faster still, about 1–2 seconds.\
+Ollama is free.\
+Two lines are written at a time. To skip a kind of moment, turn it off under **Moments**.
 
 ## Privacy
 
@@ -203,6 +205,7 @@ Ollama is free.
 
 - Session history never leaves your computer.\
   The one exception: with the commentary mic on, a summary of each key moment (recent feed lines and a bit of what the player said) goes to the provider you chose.\
+  When you click a file for an AI note, the start of that file (up to 200 lines) is sent too; turn this off under AI file notes.\
   With Ollama, everything stays on your computer.
 
 - API keys saved in the app are encrypted with your system keychain, kept separately in `secrets.json`, and never sent to the screen.

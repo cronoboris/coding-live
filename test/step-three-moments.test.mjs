@@ -63,6 +63,7 @@ test('compact uses explicit records, deduplicates cumulative counts and ignores 
     ['mixdog', [{ compaction: { compactCount: 0 } }], 0],
   ];
   for (const [agent, records, count] of samples) assert.equal(recordedCompactions(agent, records).length, count);
+  assert.equal(recordedCompactions('mixdog', [{ compaction: { compactCount: 1, lastCompactAt: 5000 } }])[0].at, 5000, 'mixdog records when it compacted');
   const m = new Match();
   for (const count of [1, 1, 0, 2]) m.push({ type: 'compact', at: 1000, count });
   assert.deepEqual(m.moments.map(x => x.threshold), [1, 2], 'one moment per compaction, keyed by its count');

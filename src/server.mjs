@@ -60,6 +60,12 @@ export async function startServer({ port = 4417, host = '127.0.0.1', mic, env = 
         return json(res, 200, await live.updateSettings(JSON.parse((await readBody(req)) || '{}')));
       }
       if (path === '/api/demo') return req.method === 'POST' && req.headers['x-coding-live'] === '1' ? json(res, 200, live.startDemo()) : json(res, 403, { error: 'forbidden' });
+      const f = /^\/api\/project\/([\w-]+)\/file$/.exec(path);
+      if (f) {
+        if (req.method !== 'POST' || req.headers['x-coding-live'] !== '1') return json(res, 403, { error: 'forbidden' });
+        const { path: file } = JSON.parse((await readBody(req)) || '{}');
+        return json(res, 200, await live.explainFile(f[1], typeof file === 'string' ? file : ''));
+      }
       const m = /^\/api\/match\/([\w-]+)\/(stream|mic|review)$/.exec(path);
       if (!m) return json(res, 404, { error: 'not found' });
       const [, key, action] = m;
