@@ -4,8 +4,10 @@
 import { t as msg } from '../i18n/index.mjs';
 export const base = p => (p ? String(p).split(/[\\/]/).filter(Boolean).at(-1) : msg('caster.file'));
 const text = (key, vars = {}) => ({ text: msg(`caster.${key}`, vars) });
-const fileKind = (path, test) => msg(test ? 'caster.testFile' : /\.(?:[cm]?[jt]sx?|py|rs|go|c|h|cc|cpp|hpp|cs|java|kt|swift|rb|php|sh|bash|zsh|sql|html|css|scss|vue|svelte)$/i.test(path) ? 'caster.code' : 'caster.file');
-export const isTestPath = p => /(^|[\\/])(test|tests|__tests__|spec)[\\/]|[._-](test|spec)\.|^test_|[\\/]test_\w+\.py$/.test(String(p ?? ''));
+export const isCodePath = p => /\.(?:[cm]?[jt]sx?|py|rs|go|c|h|cc|cpp|hpp|cs|java|kt|swift|rb|php|sh|bash|zsh|sql|html|css|scss|vue|svelte)$/i.test(String(p ?? ''));
+const fileKind = (path, test) => msg(test ? 'caster.testFile' : isCodePath(path) ? 'caster.code' : 'caster.file');
+// Test folders, names like cart.test.js / cart_tests.cpp / cart-spec.ts, and names starting with test_ in any folder.
+export const isTestPath = p => /(^|[\\/])(test|tests|__tests__|spec|specs)[\\/]|[._-](test|tests|spec|specs)\.|(^|[\\/])test_/.test(String(p ?? ''));
 
 export function testScore(text) {
   const tap = { pass: /# pass (\d+)/.exec(text)?.[1], fail: /# fail (\d+)/.exec(text)?.[1] };

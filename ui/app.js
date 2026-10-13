@@ -159,12 +159,25 @@ function renderTop(s) {
 function renderStats(s) {
   const box = $('stats');
   box.replaceChildren();
-  const stat = (k, v, cls = '', id, extra = '') => { const d = el('div', `stat ${extra}`); d.append(el('span', 'k', t(k))); const x = el('span', `v ${cls}`, v); if (id) x.id = id; d.append(x); box.append(d); };
+  const stat = (k, v, cls = '', id, extra = '') => { const d = el('div', `stat ${extra}`); d.append(el('span', 'k', t(k))); const x = el('span', `v ${cls}`, v); if (id) x.id = id; d.append(x); box.append(d); return d; };
   stat('경기 시간', clock(since(s)), '', 'clock');
   stat('뛰는 선수', `${s.players.filter(p => !p.finished).length} / ${s.players.length}`, '', null, 'rate');
   stat('비용', Number.isFinite(s.costUsd) ? money(s.costUsd) : '—');
   stat('테스트', s.tests ? `${s.tests.pass}/${s.tests.pass + s.tests.fail}` : '—', s.tests ? (s.tests.fail ? 'bad' : 'good') : '');
   stat('실패', String(s.fails), s.fails ? 'bad' : '');
+  // Lines of code vs. tests in the project, and how much each grew while watching: tests growing as fast as the code
+  // is worth a look, twice as fast a warning (only once 50+ test lines were added).
+  const L = s.lines?.tooMany || s.lines?.missing ? null : s.lines;
+  const waiting = s.lines?.tooMany ? t('Git 저장소가 아닌 큰 폴더라 코드 줄 수를 세지 않았어요.') : s.lines?.missing ? t('이 컴퓨터에서 프로젝트 폴더를 찾지 못해 코드 줄 수를 세지 않았어요.') : t('코드 줄 수를 세는 중이에요.');
+  const n = v => (Math.abs(v) >= 10_000 ? `${(v / 1000).toFixed(1)}k` : v.toLocaleString());
+  const sign = v => (v > 0 ? `+${n(v)}` : v < 0 ? `−${n(-v)}` : '0');
+  const share = L && L.code + L.test ? Math.round((L.test / (L.code + L.test)) * 100) : 0;
+  stat('코드 줄', L ? `${n(L.code)} · ${t('테스트')} ${n(L.test)} (${share}%)` : '—', 'sm', null, 'lines').title = L
+    ? t('실제 코드 {code}줄, 테스트 코드 {test}줄이에요. 전체 코드 중 테스트가 {share}%예요. 빈 줄은 세지 않아요.', { code: L.code.toLocaleString(), test: L.test.toLocaleString(), share }) : waiting;
+  const dc = L ? L.code - L.base.code : 0, dt = L ? L.test - L.base.test : 0;
+  const level = dt < 50 ? '' : dt >= 2 * Math.max(dc, 0) ? 'bad' : dt >= Math.max(dc, 0) ? 'warn' : '';
+  stat('지켜본 뒤 증가', L ? `${sign(dc)} · ${t('테스트')} ${sign(dt)}` : '—', `sm ${level}`, null, 'lines').title = !L ? waiting
+    : `${t('coding live가 지켜보기 시작한 뒤로 실제 코드가 {dc}줄, 테스트 코드가 {dt}줄 늘었어요.', { dc: sign(dc), dt: sign(dt) })}${level === 'bad' ? `\n${t('테스트가 코드보다 2배 넘게 늘었어요. AI가 필요 이상으로 큰 테스트를 쓰고 있지 않은지 확인해 보세요.')}` : level === 'warn' ? `\n${t('테스트가 코드만큼 늘고 있어요. 테스트가 과하지 않은지 지켜보세요.')}` : ''}`;
 }
 
 // Project files as a treemap with the players on it (see filemap.js).

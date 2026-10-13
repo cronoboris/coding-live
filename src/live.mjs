@@ -11,6 +11,7 @@ import { envSecrets } from './secrets.mjs';
 import { demoAdapter, playDemo, demoPlaying } from './demo.mjs';
 import { Settings } from './settings.mjs';
 import { groupProjects, buildProject } from './project.mjs';
+import { LineCounter } from './lines.mjs';
 import { parseKey } from './hub.mjs';
 import { dirname, join, basename, relative, resolve as resolvePath, sep } from 'node:path';
 import { recordedCompactions, momentEnabled, momentSettings } from './core/moments.mjs';
@@ -44,6 +45,7 @@ export class Live {
     this.hub = hub; this.settings = settings; this.backend = null; this.booth = new Booth(null); this.secrets = envSecrets({});
     this.micOn = new Set(); this.reviews = new Map(); this.alertSubs = new Map(); this.onAlert = null;
     this.compactionFiles = new WeakMap(); this.restored = new WeakSet(); this.fileNotes = new Map(); this.roleMaps = new Map();
+    this.lineCounter = new LineCounter(); this.lineCounts = new Map();
     this.momentSettings = momentSettings(settings.value?.moments);
     setNameStyle(settings.value?.general?.nameStyle);
     setLanguage(settings.value?.general?.language, this.locale);
@@ -123,7 +125,7 @@ export class Live {
         return match.comments.get(existing?.key ?? `${moment.type}@${moment.eventAt}`) ?? null;
       }, this.momentSettings))));
     };
-    const withRoles = (p, snap) => { snap.roles = this.roleMap(p, snap.files.map(f => f.path), schedule); return snap; };
+    const withRoles = (p, snap) => { snap.roles = this.roleMap(p, snap.files.map(f => f.path), schedule); snap.lines = this.codeLines(p, schedule); return snap; };
     // Each player's match takes its name from the project, so its commentary calls the player what the screen does.
     const named = snap => {
       for (const pl of [...snap.players, ...(snap.left ?? [])]) { const match = this.hub.tails.get(pl.key)?.match; if (match && pl.name) match.assignedName = pl.name; }
@@ -305,6 +307,21 @@ export class Live {
       this.fileNotes.set(cacheKey, note);
       return note;
     } catch (e) { return { error: 'call', message: explainError(e, conf).message }; }
+  }
+
+  // Lines of code and of tests in the project, counted again at most every 30 seconds. `base` is the first count
+  // since coding live started watching this folder, so the stats bar can show how much each side grew since.
+  codeLines(p, onChange) {
+    if (!p.cwd) return null;
+    let m = this.lineCounts.get(p.cwd);
+    if (!m) { m = { now: null, base: null, busy: false, at: 0 }; this.lineCounts.set(p.cwd, m); }
+    if (!m.busy && Date.now() - m.at > 30_000) {
+      m.busy = true;
+      this.lineCounter.count(p.cwd)
+        .then(r => { if (!r.tooMany && !r.missing) m.base ??= r; m.now = r; })
+        .finally(() => { m.busy = false; m.at = Date.now(); onChange(); });
+    }
+    return m.now ? { ...m.now, base: m.base } : null;
   }
 
   // The role map: the AI sorts the project's touched files into the fixed areas (ROLES), from their paths alone.

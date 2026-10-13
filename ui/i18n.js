@@ -346,6 +346,16 @@ export const EN = {
   '역할 지도': 'Role map',
   '파일 지도를 화면·데이터·테스트 같은 역할 구역으로 묶어 보여 줘요. 선수가 건드린 파일의 경로(내용은 아님)가 고른 프로바이더로 전달돼요.':
     'Groups the file map into areas such as screen, data and tests. The paths of the files the players touched (not their contents) are sent to the provider you chose.',
+  // ---- lines of code ----
+  '코드 줄': 'Lines of code',
+  '지켜본 뒤 증가': 'Growth while watching',
+  '실제 코드 {code}줄, 테스트 코드 {test}줄이에요. 전체 코드 중 테스트가 {share}%예요. 빈 줄은 세지 않아요.': '{code} lines of code and {test} lines of tests. Tests are {share}% of all code. Blank lines are not counted.',
+  '코드 줄 수를 세는 중이에요.': 'Counting lines of code…',
+  '이 컴퓨터에서 프로젝트 폴더를 찾지 못해 코드 줄 수를 세지 않았어요.': 'The project folder isn’t on this computer, so its lines of code aren’t counted.',
+  'Git 저장소가 아닌 큰 폴더라 코드 줄 수를 세지 않았어요.':'This large folder isn’t a Git repository, so its lines of code aren’t counted.',
+  'coding live가 지켜보기 시작한 뒤로 실제 코드가 {dc}줄, 테스트 코드가 {dt}줄 늘었어요.': 'Since coding live started watching, the code changed by {dc} lines and the tests by {dt} lines.',
+  '테스트가 코드보다 2배 넘게 늘었어요. AI가 필요 이상으로 큰 테스트를 쓰고 있지 않은지 확인해 보세요.': 'Tests grew more than twice as much as the code. Check that the AI isn’t writing far more tests than needed.',
+  '테스트가 코드만큼 늘고 있어요. 테스트가 과하지 않은지 지켜보세요.': 'Tests are growing as fast as the code. Keep an eye on whether they’re overdone.',
   // ---- updates ----
   '{v}을(를) 받아 뒀어요. 재시작하면 적용돼요. 그냥 두면 다음에 끌 때 적용돼요.': '{v} is downloaded. Restart to apply it now, or it applies the next time you quit.',
   '{v}이(가) 나왔어요. 맥에서는 다운로드 페이지에서 받아 설치해 주세요.': '{v} is out. On a Mac, download and install it from the release page.',
