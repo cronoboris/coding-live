@@ -346,6 +346,17 @@ export const EN = {
   '역할 지도': 'Role map',
   '파일 지도를 화면·데이터·테스트 같은 역할 구역으로 묶어 보여 줘요. 선수가 건드린 파일의 경로(내용은 아님)가 고른 프로바이더로 전달돼요.':
     'Groups the file map into areas such as screen, data and tests. The paths of the files the players touched (not their contents) are sent to the provider you chose.',
+  // ---- updates ----
+  '{v}을(를) 받아 뒀어요. 재시작하면 적용돼요. 그냥 두면 다음에 끌 때 적용돼요.': '{v} is downloaded. Restart to apply it now, or it applies the next time you quit.',
+  '{v}이(가) 나왔어요. 맥에서는 다운로드 페이지에서 받아 설치해 주세요.': '{v} is out. On a Mac, download and install it from the release page.',
+  '{v} 받는 중… {p}%': 'Downloading {v}… {p}%',
+  '새 버전을 확인하는 중…': 'Checking for a new version…',
+  '최신 버전이에요. 새 버전이 나오면 알림으로 알려 드려요.': 'You are up to date. You will get a notification when a new version is out.',
+  '새 버전을 확인하지 못했어요: {message}': 'Could not check for a new version: {message}',
+  '새 버전이 나오면 알림으로 알려 드려요.': 'You will get a notification when a new version is out.',
+  '재시작해서 업데이트': 'Restart to update',
+  '다운로드 페이지 열기': 'Open download page',
+  '지금 확인': 'Check now',
   // ---- role map ----
   '역할 보기': 'By role',
   '폴더 보기': 'By folder',

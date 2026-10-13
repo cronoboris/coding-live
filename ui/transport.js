@@ -55,6 +55,7 @@ const http = {
   copy: text => navigator.clipboard.writeText(text).then(() => true, () => false),
   openUrl: url => window.open(url, '_blank', 'noopener'),
   openReleases: () => window.open(RELEASES, '_blank', 'noopener'),
+  updateStatus: async () => null, checkUpdate: async () => null, installUpdate: async () => {}, onUpdate: () => {},
   pickFolder: async () => null,
   openFull: () => {}, toggleWidget: () => {}, onOpenMatch: () => {}, onSettings: fn => settingsListeners.add(fn),
 };
@@ -83,6 +84,10 @@ const desktop = ipc && {
   copy: text => ipc.copy(text),
   openUrl: url => ipc.openUrl(url),
   openReleases: () => ipc.openReleases(),
+  updateStatus: () => ipc.updateStatus(),
+  checkUpdate: () => ipc.checkUpdate(),
+  installUpdate: () => ipc.installUpdate(),
+  onUpdate: fn => ipc.onUpdate(fn),
   pickFolder: () => ipc.pickFolder(),
   openFull: key => ipc.openFull(key),
   toggleWidget: () => ipc.toggleWidget(),

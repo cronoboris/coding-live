@@ -324,11 +324,39 @@ function privacy(c) {
   ], t('세션 기록은 이 컴퓨터 밖으로 나가지 않아요. AI 해설을 켰을 때만, 결정적 장면의 요약(최근 자막 몇 줄, 과제 앞부분, 숫자)이 고른 프로바이더로 전달돼요. Ollama를 고르면 이 컴퓨터 안에서만 처리돼요. 앱에 저장한 API 키는 운영체제 키체인으로 암호화해서 보관하고, 화면에는 끝 네 글자만 보여 줘요. 데스크톱 앱은 웹서버를 열지 않고, 화면과 엔진이 앱 안에서 직접 통신해요.'));
 }
 
+// New versions: the installed app checks GitHub Releases by itself; Windows and Linux download and install on restart,
+// macOS opens the release page. Browser mode and development runs only link to the releases.
+let updateView = null; // redraws the open "new version" row when the status changes
+api.onUpdate(u => updateView?.(u));
+function updateRow() {
+  const r = row(t('새 버전'), t('GitHub 릴리스 페이지에서 받을 수 있어요.'), el('span'));
+  const [desc, slot] = [r.querySelector('.ds'), r.lastChild];
+  const btn = (ic, label, fn) => { const b = el('button', 'btn'); b.type = 'button'; b.append(icon(ic), document.createTextNode(label)); b.onclick = fn; return b; };
+  const draw = u => {
+    if (updateView !== draw) return; // an older settings page
+    if (!u) { desc.textContent = t('GitHub 릴리스 페이지에서 받을 수 있어요.'); slot.replaceChildren(btn('external', t('릴리스 열기'), () => api.openReleases())); return; }
+    desc.textContent = u.state === 'ready' ? t('{v}을(를) 받아 뒀어요. 재시작하면 적용돼요. 그냥 두면 다음에 끌 때 적용돼요.', { v: u.version })
+      : u.state === 'available' ? t('{v}이(가) 나왔어요. 맥에서는 다운로드 페이지에서 받아 설치해 주세요.', { v: u.version })
+      : u.state === 'downloading' ? t('{v} 받는 중… {p}%', { v: u.version, p: u.percent ?? 0 })
+      : u.state === 'checking' ? t('새 버전을 확인하는 중…')
+      : u.state === 'none' ? t('최신 버전이에요. 새 버전이 나오면 알림으로 알려 드려요.')
+      : u.state === 'error' ? t('새 버전을 확인하지 못했어요: {message}', { message: u.message })
+      : t('새 버전이 나오면 알림으로 알려 드려요.');
+    slot.replaceChildren(u.state === 'ready' ? btn('external', t('재시작해서 업데이트'), () => api.installUpdate())
+      : u.state === 'available' ? btn('external', t('다운로드 페이지 열기'), () => api.installUpdate())
+      : btn('external', t('지금 확인'), async () => draw(await api.checkUpdate())));
+  };
+  updateView = draw;
+  draw(null);
+  api.updateStatus().then(draw, () => {});
+  return r;
+}
+
 function about(c) {
   const a = state.appInfo;
   group(c, '', [
     row('coding live', `${t('버전 {v}', { v: a.version ?? '-' })}${a.browser ? ` · ${t('브라우저 모드')}` : a.platform ? ` · ${a.platform}` : ''}`),
-    row(t('새 버전'), t('GitHub 릴리스 페이지에서 받을 수 있어요.'), (() => { const b = el('button', 'btn'); b.type = 'button'; b.append(icon('external'), document.createTextNode(t('릴리스 열기'))); b.onclick = () => api.openReleases(); return b; })()),
+    updateRow(),
     row(t('데모 경기'), t('녹화된 경기 4개를 지금 뛰는 것처럼 재생해요. 크레딧이 들지 않아요.'), (() => { const b = el('button', 'btn'); b.type = 'button'; b.append(icon('play'), document.createTextNode(t('재생'))); b.onclick = async () => { await api.startDemo(); toast(t('데모 경기 4개를 시작했어요.')); close(); }; return b; })()),
   ]);
   group(c, t('단축키'), [row(t('경기 찾기'), '', el('span', 'kbd', /Mac/.test(navigator.platform) ? '⌘K' : 'Ctrl K')), row(t('설정'), '', el('span', 'kbd', /Mac/.test(navigator.platform) ? '⌘,' : 'Ctrl ,')), row(t('닫기'), '', el('span', 'kbd', 'Esc'))]);

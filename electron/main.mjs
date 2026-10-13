@@ -12,6 +12,7 @@ import { Live } from '../src/live.mjs';
 import { PROVIDERS } from '../src/providers.mjs';
 import { envSecrets, fileSecrets } from '../src/secrets.mjs';
 import { MOMENT_GROUPS } from '../src/core/moments.mjs';
+import { startUpdates } from './updater.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const UI = join(ROOT, 'ui');
@@ -28,12 +29,18 @@ const SHELL_TEXT = {
     widgetTitle: 'coding live 위젯', explainTitle: 'coding live 설명',
     open: '중계석 열기', widget: '위젯 보기', demo: '데모 경기 보기', commentary: b => `해설: ${b ?? '정해진 문구'}`,
     notify: '알림 받기', quit: 'coding live 끄기', startFailed: 'coding live를 시작하지 못했어요',
+    updateReady: v => `새 버전 ${v}이(가) 준비됐어요`, updateReadyBody: '눌러서 재시작하면 바로 적용돼요. 다음에 끌 때 적용해도 돼요.',
+    updateOut: v => `새 버전 ${v}이(가) 나왔어요`, updateOutBody: '눌러서 다운로드 페이지를 여세요.',
+    restartUpdate: v => `재시작해서 ${v}로 업데이트`, downloadUpdate: v => `${v} 다운로드 페이지 열기`,
   },
   en: {
     noKeychain: 'This computer has no keychain to store keys safely. Please use an environment variable.',
     widgetTitle: 'coding live widget', explainTitle: 'coding live explanation',
     open: 'Open coding live', widget: 'Show widget', demo: 'Watch a demo match', commentary: b => `Commentary: ${b ?? 'built-in lines'}`,
     notify: 'Get notifications', quit: 'Quit coding live', startFailed: 'coding live couldn’t start',
+    updateReady: v => `coding live ${v} is ready`, updateReadyBody: 'Click to restart and update now, or it updates the next time you quit.',
+    updateOut: v => `coding live ${v} is out`, updateOutBody: 'Click to open the download page.',
+    restartUpdate: v => `Restart to update to ${v}`, downloadUpdate: v => `Download ${v}`,
   },
 };
 const shellLang = () => {
@@ -78,7 +85,7 @@ function serveUi() {
 if (!app.requestSingleInstanceLock()) app.quit();
 app.setAppUserModelId('com.cronoboris.codinglive'); // Windows toast notifications need it
 
-let live = null, win = null, widget = null, tray = null, quitting = false;
+let live = null, win = null, widget = null, tray = null, quitting = false, updates = null;
 const settings = () => live.settings.value;
 
 function guard(w) {
@@ -191,6 +198,7 @@ function refreshTray() {
     { type: 'separator' },
     { label: tr('commentary')(live.backend), enabled: false },
     { label: tr('notify'), type: 'checkbox', checked: s.notifications.enabled, click: item => live.updateSettings({ notifications: { enabled: item.checked } }) },
+    ...(updateItem() ? [{ type: 'separator' }, updateItem()] : []),
     { type: 'separator' },
     { label: tr('quit'), click: () => { quitting = true; app.quit(); } },
   ]));
@@ -204,6 +212,22 @@ function applyShell(s) {
   if (!s.commentary.explain) hideExplain();
   refreshTray();
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send('cl:settings', s);
+}
+
+// A new version: restart into it where it can install itself (Windows, Linux), else open its release page (macOS).
+const releasePage = v => `${RELEASES}/tag/v${v}`;
+function updateItem() {
+  const u = updates?.status();
+  if (u?.state === 'ready') return { label: tr('restartUpdate')(u.version), click: () => updates.install() };
+  if (u?.state === 'available') return { label: tr('downloadUpdate')(u.version), click: () => shell.openExternal(releasePage(u.version)) };
+  return null;
+}
+function notifyUpdate(u) {
+  if (!Notification.isSupported()) return;
+  const ready = u.state === 'ready';
+  const n = new Notification({ title: tr(ready ? 'updateReady' : 'updateOut')(u.version), body: tr(ready ? 'updateReadyBody' : 'updateOutBody'), icon: join(BUILD, 'icon.png') });
+  n.on('click', () => (ready ? updates.install() : shell.openExternal(releasePage(u.version))));
+  n.show();
 }
 
 function notify(a) {
@@ -263,6 +287,9 @@ function wireIpc() {
     return r.canceled ? null : r.filePaths[0] ?? null;
   });
   handle('cl:open-releases', () => shell.openExternal(RELEASES));
+  handle('cl:update-status', () => updates?.status() ?? null); // null: not an installed app, no updates
+  handle('cl:update-check', () => { updates?.check(); return updates?.status() ?? null; });
+  handle('cl:update-install', () => { const u = updates?.status(); if (u?.state === 'ready') updates.install(); else if (u?.state === 'available') shell.openExternal(releasePage(u.version)); });
   handle('cl:open-full', (_e, key) => showWindow(key));
   handle('cl:toggle-widget', () => live.updateSettings({ widget: { visible: !(widget?.isVisible()) } }));
   handle('cl:moment-groups', () => MOMENT_GROUPS);
@@ -288,6 +315,7 @@ app.whenReady().then(async () => {
   live.settings.on('change', s => applyShell(s));
   applyShell(settings());
   live.startAlerts(notify);
+  if (app.isPackaged) updates = startUpdates({ notify: notifyUpdate, onChange: u => { refreshTray(); for (const w of BrowserWindow.getAllWindows()) w.webContents.send('cl:update', u); } });
   const hidden = settings().general.startHidden || app.getLoginItemSettings().wasOpenedAsHidden || process.argv.includes('--hidden');
   if (!hidden) showWindow();
 });
