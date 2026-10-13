@@ -1,0 +1,11 @@
+{
+  "name": "coding live",
+  "short_name": "coding live",
+  "description": "돌고 있는 코딩 에이전트를 스포츠 중계처럼",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#eef1f5",
+  "theme_color": "#13233b",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

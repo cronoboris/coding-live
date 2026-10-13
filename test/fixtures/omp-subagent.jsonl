@@ -1,0 +1,2 @@
+{"type":"session","version":3,"id":"child","timestamp":"2026-10-12T10:00:00Z","cwd":"/work/shop","parentSession":"/sessions/parent.jsonl"}
+{"type":"message","timestamp":"2026-10-12T10:00:01Z","message":{"role":"user","content":"Inspect tests"}}

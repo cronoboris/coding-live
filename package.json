@@ -1,0 +1,100 @@
+{
+  "name": "coding-live",
+  "version": "0.1.0",
+  "description": "Live sports-style play-by-play for running coding agents (Claude Code, Codex, Gemini CLI, Pi)",
+  "type": "module",
+  "bin": {
+    "coding-live": "bin/coding-live.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "ui"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node bin/coding-live.mjs",
+    "app": "electron .",
+    "dist": "electron-builder",
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "main": "electron/main.mjs",
+  "author": {
+    "name": "cronoboris",
+    "email": "cronoboris@users.noreply.github.com"
+  },
+  "build": {
+    "appId": "com.cronoboris.codinglive",
+    "productName": "coding live",
+    "artifactName": "coding-live-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "electron/**",
+      "src/**",
+      "ui/**",
+      "bin/**",
+      "build/icon.png",
+      "build/tray*.png",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "identity": "-"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "category": "Development",
+      "syncDesktopName": true
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release"
+    },
+    "deb": {
+      "packageName": "coding-live"
+    },
+    "electronLanguages": [
+      "en-US",
+      "ko"
+    ],
+    "compression": "maximum"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "desktopName": "coding-live.desktop",
+  "homepage": "https://github.com/cronoboris/coding-live"
+}

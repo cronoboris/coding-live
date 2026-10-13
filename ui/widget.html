@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title data-i18n>coding live 위젯</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="widget.css">
+</head>
+<body class="widget">
+<div class="w" id="w">
+  <header class="w-head">
+    <span id="wav"></span>
+    <div class="w-who"><b id="who"></b><span id="sub"></span></div>
+    <span id="wstate"></span>
+    <button type="button" class="w-btn" id="wfull" title="크게 보기" aria-label="크게 보기" data-i18n-attr="title,aria-label"></button>
+    <button type="button" class="w-btn" id="wclose" title="위젯 닫기" aria-label="위젯 닫기" data-i18n-attr="title,aria-label"></button>
+  </header>
+  <div class="w-board" id="wboard"></div>
+  <div class="w-players" id="wplayers"></div>
+  <div class="w-moment" id="wmoment" hidden></div>
+  <footer class="w-foot"><select id="wpick" aria-label="따라갈 경기" data-i18n-attr="aria-label"></select></footer>
+</div>
+<script src="widget.js" type="module"></script>
+</body>
+</html>

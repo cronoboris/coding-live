@@ -1,0 +1,65 @@
+/* Compact always-on-top widget. The header is the drag handle. */
+html, body.widget { height: 100%; margin: 0; background: transparent; overflow: hidden; }
+.w { height: 100%; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; gap: 8px; padding: 10px 12px 10px; background: var(--sheet); color: var(--text); border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-strong); font-size: var(--fs-meta); }
+.w-head { display: flex; align-items: center; gap: 8px; -webkit-app-region: drag; user-select: none; min-width: 0; }
+.w-head .avatar { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
+.w-who { flex: 1; min-width: 0; display: grid; }
+.w-who b { font-size: var(--fs-meta); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w-who span { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w-btn { -webkit-app-region: no-drag; all: unset; cursor: pointer; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; color: var(--muted); }
+.w-btn:hover, .w-btn:focus-visible { color: var(--text); background: var(--hover); }
+.w-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-radius: 10px; box-shadow: inset 0 0 0 1px var(--border); }
+.w-board div { display: grid; padding: 6px 8px; min-width: 0; }
+.w-board div + div { border-left: 1px solid var(--border); }
+.w-board span { font-size: 10.5px; color: var(--muted); }
+.w-board b { font-family: var(--font-mono); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w-board b.good { color: var(--good); } .w-board b.bad { color: var(--bad); }
+.w-now { display: flex; gap: 6px; align-items: center; min-width: 0; color: var(--text-soft); }
+.w-now .tx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w-now.fail { color: var(--bad); } .w-now.pass { color: var(--good); }
+.w-moment { min-height: 0; overflow: hidden; border-radius: 10px; padding: 8px 10px; background: var(--layer-1); display: grid; gap: 3px; align-content: start; }
+.w-moment.decision { background: var(--warn-soft); }
+.w-moment .hd { font-size: 11px; font-weight: 600; color: var(--muted); }
+.w-moment p { margin: 0; min-height: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45; }
+.w-foot { -webkit-app-region: no-drag; }
+.w-foot select { width: 100%; height: 26px; border: 0; border-radius: 7px; background: var(--layer-1); color: var(--muted); font-size: 12px; padding: 0 6px; }
+.w-empty { color: var(--muted); align-self: center; text-align: center; }
+
+.w-players { display: grid; gap: 4px; }
+.wp { display: grid; grid-template-columns: 18px auto auto minmax(0, 1fr); gap: 6px; align-items: center; min-width: 0; color: var(--text-soft); font-size: 12px; }
+.wp b { font-weight: 600; white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.wp { border-radius: 6px; padding: 1px 4px; margin: 0 -4px; }
+.wp.sub { padding-left: 8px; border-left: 1px dashed var(--border-strong); border-radius: 0 6px 6px 0; }
+.wp.sub.nested { margin-left: 10px; }
+body.web .w { max-width: 440px; }
+.wp.sub b { font-weight: 500; color: var(--muted); }
+.wp .wname { display: flex; align-items: center; min-width: 0; }
+.done-badge { margin-left: 5px; padding: 0 5px; border-radius: 999px; background: var(--layer-1); color: var(--faint); font-size: 10.5px; line-height: 16px; white-space: nowrap; }
+.w-left { font-size: 11.5px; color: var(--faint); padding-left: 2px; }
+.wp.can { cursor: pointer; }
+.wp.can:hover, .wp.open { background: var(--hover); }
+.wp.can:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Explanation of a player's latest action: its own window in the desktop app, a popover in browser mode. */
+body.explain-win { overflow: hidden; }
+.ex-pop { box-sizing: border-box; max-height: 100vh; overflow: auto; background: var(--sheet); color: var(--text); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--border-strong); padding: 10px 12px 12px; font-size: var(--fs-meta); }
+.ex-pop.popover { position: fixed; z-index: 20; box-shadow: var(--shadow-pop); }
+.ex-card { display: grid; gap: 8px; }
+.ex-hd { display: grid; grid-template-columns: 22px minmax(0, 1fr) 24px; gap: 8px; align-items: start; }
+.explain-win .ex-hd { -webkit-app-region: drag; }
+.ex-hd .avatar { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
+.ex-close { -webkit-app-region: no-drag; }
+.ex-who { display: grid; gap: 2px; min-width: 0; }
+.ex-who b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-act { color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.ex-label { font-size: 11px; font-weight: 600; color: var(--muted); }
+.ex-card .ex-panel { margin: 0; }
+.wp .tx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp.fail .tx { color: var(--bad); } .wp.pass .tx { color: var(--good); }
+.wp .spinner { width: 10px; height: 10px; }
+.w-head .avatars .avatar { width: 20px; height: 20px; font-size: 9px; }
+.w-moment.var, .w-moment.skip, .w-moment.weaken, .w-moment.mask { background: var(--bad-soft); }
+.w-ask { all: unset; box-sizing: border-box; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; line-height: 1.4; color: var(--text-soft); cursor: pointer; border-radius: 6px; }
+.w-ask b { font-weight: 600; color: var(--accent); margin-right: 6px; }
+.w-ask:hover { color: var(--text); }
+.w-ask:focus-visible { outline: 2px solid var(--accent); }

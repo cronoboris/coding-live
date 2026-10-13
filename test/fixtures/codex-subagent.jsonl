@@ -1,0 +1,2 @@
+{"type":"session_meta","timestamp":"2026-10-12T10:00:00Z","payload":{"id":"child","cwd":"/work/shop","parent_thread_id":"parent","source":{"subagent":{"other":"guardian"}}}}
+{"type":"event_msg","timestamp":"2026-10-12T10:00:01Z","payload":{"type":"user_message","message":"Inspect tests"}}

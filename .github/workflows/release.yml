@@ -1,0 +1,44 @@
+name: Release desktop app
+
+# Push a tag like v0.1.0 to build installers for macOS, Windows and Linux and attach them to a GitHub release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # Create the release once, so the three builds don't race to create it.
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the release if it doesn't exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          gh release view "$v" >/dev/null 2>&1 || gh release create "$v" --target "$GITHUB_SHA" --title "${v#v}" --notes "coding live ${v#v}"
+  build:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build and publish installers
+        run: npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No paid signing certificate yet: macOS builds are ad-hoc signed, Windows builds are unsigned.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'

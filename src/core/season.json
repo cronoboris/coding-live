@@ -1,0 +1,24 @@
+{
+  "claude-haiku-5-5": {
+    "games": 285,
+    "hiddenPassRate": 93.3,
+    "firstTestPassRate": 93.7,
+    "testRunFailRate": 9,
+    "testRunsPerGame": 1.5,
+    "tryErrorRate": 0,
+    "varGameRate": 6.7,
+    "avgSeconds": 31,
+    "avgCostUsd": 0.0054
+  },
+  "claude-opus-5-5": {
+    "games": 62,
+    "hiddenPassRate": 98.4,
+    "firstTestPassRate": 93.4,
+    "testRunFailRate": 7.4,
+    "testRunsPerGame": 1.3,
+    "tryErrorRate": 18.2,
+    "varGameRate": 1.6,
+    "avgSeconds": 53,
+    "avgCostUsd": 0.2051
+  }
+}

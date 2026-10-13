@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "workers": {
+    "sess_error": {
+      "sessionId": "sess_error",
+      "parentSessionId": "parent",
+      "status": "error",
+      "stage": "error",
+      "error": "작업 실행 실패",
+      "finishedAt": "2026-10-13T06:24:39.085Z"
+    },
+    "sess_running": {
+      "sessionId": "sess_running",
+      "parentSessionId": "parent",
+      "status": "running",
+      "stage": "streaming",
+      "error": null,
+      "finishedAt": null
+    }
+  }
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="theme-color" content="#17171a">
+<title>coding live</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar" aria-label="경기 목록" data-i18n-attr="aria-label">
+    <div class="side-head">
+      <div class="brand"><img src="icon.svg" alt=""><span>coding live</span></div>
+      <button class="btn ghost iconbtn" id="openSettings" type="button" title="설정 (Ctrl+,)" aria-label="설정" data-i18n-attr="title,aria-label"></button>
+    </div>
+    <div class="side-search">
+      <span id="searchIcon"></span>
+      <input class="input" id="search" type="search" placeholder="경기 찾기" aria-label="경기 찾기" autocomplete="off" data-i18n-attr="aria-label,placeholder">
+      <span class="kbd" id="searchKbd">Ctrl K</span>
+    </div>
+    <div class="side-filters">
+      <div class="seg" role="group" aria-label="보기" data-i18n-attr="aria-label">
+        <button type="button" data-f="all" aria-pressed="true" data-i18n>전체</button>
+        <button type="button" data-f="live" aria-pressed="false" data-i18n>경기 중</button>
+      </div>
+      <select id="agentFilter" aria-label="에이전트" data-i18n-attr="aria-label"><option value="" data-i18n>모든 에이전트</option></select>
+    </div>
+    <div class="list" id="list" role="list"></div>
+    <div class="side-foot">
+      <button class="btn ghost" id="demoBtn" type="button"></button>
+      <button class="btn ghost" id="widgetBtn" type="button" hidden></button>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="welcome" id="welcome">
+      <div class="welcome-in">
+        <div class="hero">
+          <h2 data-i18n>에이전트가 일하는 걸, 경기처럼.</h2>
+          <p data-i18n>이 컴퓨터에서 돌고 있는 코딩 에이전트를 찾아 실시간으로 중계해요. 코드를 몰라도 지금 어디까지 했는지, 막혔는지, 내가 정해 줘야 할 게 있는지 보여 줘요.</p>
+        </div>
+        <div class="actions">
+          <button class="btn primary lg" id="demoHero" type="button" data-i18n>데모 경기 보기</button>
+          <button class="btn lg" id="settingsHero" type="button" data-i18n>에이전트 연결 확인</button>
+        </div>
+        <div class="grid-gap">
+          <p class="label" style="margin-bottom:8px" data-i18n>찾은 에이전트</p>
+          <div class="detect frame" id="detect"></div>
+        </div>
+      </div>
+    </div>
+
+    <section id="match" hidden class="match">
+      <header class="topbar">
+        <button class="btn ghost iconbtn back" id="back" type="button" aria-label="경기 목록으로" data-i18n-attr="aria-label"></button>
+        <div class="who" id="who"></div>
+        <div class="seg mtabs" role="tablist" aria-label="화면|탭" data-i18n-attr="aria-label">
+          <button type="button" role="tab" data-v="map" aria-selected="true" data-i18n>파일 지도</button>
+          <button type="button" role="tab" data-v="side" aria-selected="false" data-i18n>중계</button>
+        </div>
+        <span id="statePill"></span>
+        <button class="btn" id="mic" type="button"></button>
+      </header>
+      <div class="stage" id="stage">
+        <div class="center">
+          <div class="stats" id="stats"></div>
+          <div class="mapwrap" id="mapScroll">
+            <section class="filemap" aria-label="프로젝트 파일" data-i18n-attr="aria-label">
+              <div class="fm-head"><span class="label" data-i18n>프로젝트 파일 · 선수가 지금 있는 파일이 크게 보여요</span><span class="legend" id="fmLegend"></span></div>
+              <div class="fm" id="filemap"></div>
+            </section>
+          </div>
+        </div>
+        <aside class="side" aria-label="중계와 해설" data-i18n-attr="aria-label">
+          <div class="insp-head">
+            <div class="seg" role="tablist" aria-label="정보|탭" data-i18n-attr="aria-label">
+              <button type="button" role="tab" data-t="feed" aria-selected="true" data-i18n>중계</button>
+              <button type="button" role="tab" data-t="report" aria-selected="false" data-i18n>리포트</button>
+              <button type="button" role="tab" data-t="players" aria-selected="false" data-i18n>선수</button>
+            </div>
+            <span id="selChip"></span>
+          </div>
+          <div class="side-body" id="sideScroll"><div id="side"></div></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="scrim" id="settings" hidden></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script src="app.js" type="module"></script>
+</body>
+</html>

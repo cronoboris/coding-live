@@ -1,0 +1,17 @@
+{
+  "owner": "agent",
+  "createdAt": "2026-10-13T06:00:00.000Z",
+  "cwd": "/work/demo",
+  "model": "claude-opus-5-5",
+  "parentSessionId": "sess_parent",
+  "ownerSessionId": "sess_owner",
+  "agent": "worker",
+  "agentTag": "tool-explain",
+  "title": "Explain tools",
+  "messages": [
+    {"role": "user", "content": "Explain the tools"},
+    {"role": "assistant", "content": "", "toolCalls": [{"id": "r1", "name": "read", "arguments": {"file_path": "src/tools.mjs"}}]},
+    {"role": "tool", "toolCallId": "r1", "content": "export const tools = [];"},
+    {"role": "assistant", "content": "도구 목록을 확인했습니다."}
+  ]
+}
