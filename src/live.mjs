@@ -43,7 +43,7 @@ export class Live {
   constructor(hub, settings, { locale } = {}) {
     this.locale = locale;
     this.hub = hub; this.settings = settings; this.backend = null; this.booth = new Booth(null); this.secrets = envSecrets({});
-    this.micOn = new Set(); this.reviews = new Map(); this.alertSubs = new Map(); this.onAlert = null;
+    this.micOn = new Set(); this.micOff = new Set(); this.reviews = new Map(); this.alertSubs = new Map(); this.onAlert = null;
     this.compactionFiles = new WeakMap(); this.restored = new WeakSet(); this.fileNotes = new Map(); this.roleMaps = new Map();
     this.lineCounter = new LineCounter(); this.lineCounts = new Map();
     this.momentSettings = momentSettings(settings.value?.moments);
@@ -142,7 +142,7 @@ export class Live {
         if (players.has(k)) continue;
         const entry = { snap: null, stop: null };
         players.set(k, entry);
-        this.subscribe(k, snap => { entry.snap = snap; schedule(); }, { background: !order.includes(k) }).then(stop => { if (closed) stop?.(); else entry.stop = stop; });
+        this.subscribe(k, snap => { entry.snap = snap; schedule(); }, { background: !order.includes(k), project: pkey }).then(stop => { if (closed) stop?.(); else entry.stop = stop; });
       }
       schedule();
     };
@@ -150,9 +150,11 @@ export class Live {
     sync();
     return () => { closed = true; clearTimeout(timer); this.hub.off('sessions', sync); for (const e of players.values()) e.stop?.(); };
   }
+  // The person's switch for a whole match; turned off, it also keeps players who join later off.
   setMicProject(pkey, on) {
     const p = this.projects().find(x => x.key === pkey);
     if (!p) return { error: 'unknown project' };
+    if (on) this.micOff.delete(pkey); else this.micOff.add(pkey);
     for (const pl of p.players) this.setMic(pl.key, on);
     return { on, backend: this.backend };
   }
@@ -241,11 +243,17 @@ export class Live {
   // What to run when the booth finishes a line for this session.
   lineDone(key, tail) { return () => { this.saveComments(key, tail.match); this.hub.emit('update', key); }; }
 
-  async subscribe(key, send, { background = false } = {}) {
+  // With "turn on automatically", commentary starts whenever a watched player is playing: when the match opens, and
+  // again when a player that was waiting (between turns, as after a restart) starts its next turn. Never for a match
+  // or player the person turned off. `project` is the project match this player is part of.
+  async subscribe(key, send, { background = false, project = null } = {}) {
     const tail = await this.hub.watch(key);
     if (!tail) return null;
     this.restoreComments(key, tail.match);
-    if (!background && this.backend && this.settings.value.commentary.autoOn && !tail.match.finished) this.setMic(key, true);
+    const autoMic = () => {
+      if (!background && this.backend && this.settings.value.commentary.autoOn && !tail.match.finished && !this.micOn.has(key) && !this.micOff.has(key) && !(project && this.micOff.has(project))) this.switchMic(key, true);
+    };
+    autoMic();
     let timer = null, sentVersion = -1, closed = false;
     const flush = () => { timer = null; if (closed) return; const s = this.snapshot(key); if (s) { if (this.micOn.has(key)) this.booth.cover(tail.match, this.lineDone(key, tail)); send(s); sentVersion = tail.match.version; } };
     const schedule = () => { if (!timer) timer = setTimeout(flush, 250); };
@@ -253,6 +261,7 @@ export class Live {
       if (k !== key) return;
       tail.match.setMomentSettings(this.momentSettings);
       this.workerOutcome(key, tail.match);
+      autoMic();
       if (this.micOn.has(key)) this.booth.cover(tail.match, this.lineDone(key, tail));
       schedule();
     };
@@ -262,7 +271,12 @@ export class Live {
     return () => { closed = true; this.hub.off('update', onUpdate); clearInterval(heartbeat); clearTimeout(timer); this.hub.unwatch(key); };
   }
 
+  // The person's switch for one player; switchMic is the switch itself.
   setMic(key, on) {
+    if (on) this.micOff.delete(key); else this.micOff.add(key);
+    return this.switchMic(key, on);
+  }
+  switchMic(key, on) {
     const tail = this.hub.tails.get(key);
     if (!tail) return { error: 'not watching this match' };
     tail.match.setMomentSettings(this.momentSettings);

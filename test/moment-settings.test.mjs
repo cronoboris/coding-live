@@ -131,6 +131,29 @@ test('live settings purge queued commentary and late replies, then filter rebuil
   assert.equal(rebuilt.moments.length, 0);
 });
 
+test('automatic commentary starts when a waiting player starts its next turn, unless the person turned it off', async () => {
+  const m = new Match();
+  m.push({ type: 'prompt', at: 1000, text: '할 일' }); m.push({ type: 'end', at: 2000, text: '끝났어요' });
+  assert.equal(m.finished, true, 'between turns, as after a restart');
+  const live = new Live(fakeHub(m), { value: sanitize({}) });
+  live.backend = 'test AI'; live.booth = new Booth({ provider: 'compatible', via: 'api' }); live.booth.paused = true;
+  const stop = await live.subscribe(key, () => {}, { project: 'p' });
+  try {
+    assert.ok(!live.micOn.has(key), 'not while waiting');
+    m.push({ type: 'prompt', at: 3000, text: '다음 할 일' });
+    live.hub.emit('update', key);
+    assert.ok(live.micOn.has(key), 'on when the next turn starts');
+
+    live.projects = () => [{ key: 'p', players: [{ key }] }];
+    live.setMicProject('p', false);
+    m.push({ type: 'end', at: 4000, text: '끝' }); m.push({ type: 'prompt', at: 5000, text: '또' });
+    live.hub.emit('update', key);
+    assert.ok(!live.micOn.has(key), 'stays off after the person turned the match off');
+    live.setMicProject('p', true);
+    assert.ok(live.micOn.has(key));
+  } finally { stop(); }
+});
+
 test('live update filters rebuilt matches before Booth cover; disabled types cannot alert', async () => {
   const m = new Match();
   const settings = { value: sanitize({ moments: { decision: false, quiet: false } }) };
