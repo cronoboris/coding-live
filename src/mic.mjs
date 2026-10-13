@@ -229,27 +229,30 @@ ${includeSayings ? match.final.slice(0, 2000) : '(개인정보 설정으로 보�
 답은 JSON 객체 하나로만 써. 키는 네 개야: {"headline": "경기 결과 한 문장(사실만)", "highlights": ["결정적 장면 2~3개"], "trust": ["결과를 믿기 전에 알아 둘 점, 근거 없으면 빈 배열"], "decisions": ["선수가 사용자 확인 없이 스스로 정한 기준 중 선수 본인이 말한 것만, 사용자가 판정할 질문 형태로. 없으면 빈 배열"]}`;
 }
 
+// A watched session rebuilds its Match object when its file changes; the session key (`id`) stays the same.
+const idOf = match => match.id ?? match;
+
 export class Booth {
   // conf: the resolved provider (providers.resolve), or null. max: calls per match, null = unlimited.
   constructor(conf = null, { max = 20, tone = 'spicy', includeSayings = true, teach = 'full' } = {}) {
     Object.assign(this, { conf, max, tone, includeSayings, teach });
     this.busy = false; this.queue = []; this.calls = new Map(); this.spentUsd = 0; this.tokens = 0; this.lastError = null; this.onError = null;
-    this.skipped = new WeakMap();
+    this.skipped = new Map();
   }
   // Commentary starts from the moment the mic connects: of the moments already on record, only the newest gets a
   // line; the older ones keep their fixed lines.
-  connect(match) { this.skipped.set(match, new Set(match.moments.slice(0, -1).map(m => m.key))); }
+  connect(match) { this.skipped.set(idOf(match), new Set(match.moments.slice(0, -1).map(m => m.key))); }
   get label() { return describe(this.conf); }
-  limited(match) { return this.max != null && (this.calls.get(match) ?? 0) + this.queue.filter(q => q.match === match).length >= this.max; }
+  limited(match) { return this.max != null && (this.calls.get(idOf(match)) ?? 0) + this.queue.filter(q => idOf(q.match) === idOf(match)).length >= this.max; }
   // Queue every key moment since the mic connected that has no commentary yet, newest first and ahead of older
   // queued moments, so the line on screen is the one being written.
   cover(match, onDone) {
     if (!this.conf) return;
-    if (!this.skipped.has(match)) this.connect(match);
-    const skipped = this.skipped.get(match);
+    if (!this.skipped.has(idOf(match))) this.connect(match);
+    const skipped = this.skipped.get(idOf(match));
     let front = 0;
     for (const m of [...match.moments].reverse()) {
-      if (skipped.has(m.key) || match.comments.has(m.key) || this.queue.some(q => q.match === match && q.m.key === m.key)) continue;
+      if (skipped.has(m.key) || match.comments.has(m.key) || this.queue.some(q => idOf(q.match) === idOf(match) && q.m.key === m.key)) continue;
       if (this.limited(match)) break;
       this.queue.splice(front++, 0, { match, m, onDone });
       match.setComment(m.key, { loading: true });
@@ -260,7 +263,7 @@ export class Booth {
     if (this.busy || !this.queue.length) return;
     this.busy = true;
     const { match, m, onDone } = this.queue.shift();
-    this.calls.set(match, (this.calls.get(match) ?? 0) + 1);
+    this.calls.set(idOf(match), (this.calls.get(idOf(match)) ?? 0) + 1);
     const conf = this.conf;
     try {
       const known = [...new Set(match.moments.filter(x => x.key !== m.key && match.comments.get(x.key)?.caster).map(x => LESSONS[lessonFor(x.type)?.id]?.name).filter(Boolean))];

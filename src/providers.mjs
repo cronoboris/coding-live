@@ -123,8 +123,8 @@ const META = /([()\][%!^"`<>&|;, *?])/g;
 const winArg = a => `"${String(a).replace(/(\\*)"/g, '$1$1\\"').replace(/(\\*)$/, '$1$1')}"`.replace(META, '^$1');
 export const where = bin => new Promise(r => execFile(process.platform === 'win32' ? 'where' : 'which', [bin], (err, out) => r(err ? null : String(out).split(/\r?\n/).find(Boolean)?.trim() ?? null)));
 
-export async function run(bin, args, input, { timeout = 120_000 } = {}) {
-  const env = { ...process.env };
+export async function run(bin, args, input, { timeout = 120_000, env: extra = {} } = {}) {
+  const env = { ...process.env, ...extra };
   for (const k of STRIP_ENV) delete env[k];
   let cmd = bin, argv = args;
   const opts = { env, maxBuffer: 8 << 20, timeout };
@@ -168,7 +168,10 @@ const trimUrl = u => String(u ?? '').trim().replace(/\/+$/, '');
 const CALLS = {
   async 'anthropic:cli'(c, prompt, system) {
     const alias = PROVIDERS.anthropic.models.find(m => m.id === c.model)?.alias ?? c.model ?? 'haiku';
-    const raw = await run('claude', ['-p', '--model', alias || 'haiku', '--effort', 'low', '--system-prompt-file', await personaFile(system), '--tools', '', '--no-session-persistence', '--output-format', 'json'], prompt);
+    // The user's settings, MCP servers and skills are not loaded: a commentary line needs none of them, and loading
+    // them multiplies the input (and cost) of every call. Extended thinking is off: even at low effort the model
+    // spent about 8,000 thinking tokens and close to a minute on a two-line reply.
+    const raw = await run('claude', ['-p', '--model', alias || 'haiku', '--effort', 'low', '--system-prompt-file', await personaFile(system), '--tools', '', '--strict-mcp-config', '--setting-sources', '', '--disable-slash-commands', '--no-session-persistence', '--output-format', 'json'], prompt, { env: { MAX_THINKING_TOKENS: '0' } });
     let out; try { out = JSON.parse(raw); } catch { throw Object.assign(new Error('unexpected output'), { stdout: raw }); }
     if (out.is_error || out.subtype?.startsWith?.('error')) throw Object.assign(new Error(String(out.result ?? out.subtype ?? 'error')), { stdout: raw });
     return { text: out.result ?? '', costUsd: out.total_cost_usd ?? 0 };
@@ -190,9 +193,11 @@ const CALLS = {
     }
   },
   async 'openai:api'(c, prompt, system) {
+    const model = c.model || PROVIDERS.openai.defaultModel;
     const j = await request(`${trimUrl(c.url) || 'https://api.openai.com/v1'}/chat/completions`, {
       headers: { authorization: `Bearer ${c.key}` },
-      body: { model: c.model || PROVIDERS.openai.defaultModel, messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], response_format: { type: 'json_object' } },
+      // Reasoning models (GPT-5 family, o-series) think at the lowest effort they all accept.
+      body: { model, messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, ...(/^(gpt-5|o\d)/.test(model) ? { reasoning_effort: 'low' } : {}) },
     });
     return { text: j.choices?.[0]?.message?.content ?? '', tokens: j.usage?.total_tokens ?? 0 };
   },
@@ -247,9 +252,12 @@ const CALLS = {
   async 'compatible:api'(c, prompt, system) {
     if (!c.url) throw Object.assign(new Error('no url'), { code: 'nourl' });
     if (!c.model) throw Object.assign(new Error('no model'), { code: 'nomodel' });
+    // OpenRouter, chosen directly or as a compatible server: two short lines need no deep thinking, so reasoning
+    // models think at the lowest effort and the thinking text is not sent back. Other servers get no extra fields.
+    const openrouter = c.provider === 'openrouter' || /^https?:\/\/([^/]*\.)?openrouter\.ai(\/|$)/i.test(trimUrl(c.url));
     const j = await request(`${trimUrl(c.url)}/chat/completions`, {
-      headers: { ...(c.key ? { authorization: `Bearer ${c.key}` } : {}), ...(c.provider === 'openrouter' ? { 'HTTP-Referer': 'https://github.com/cronoboris/coding-live', 'X-OpenRouter-Title': 'coding live' } : {}) },
-      body: { model: c.model, stream: false, messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }] }, timeout: 180_000,
+      headers: { ...(c.key ? { authorization: `Bearer ${c.key}` } : {}), ...(openrouter ? { 'HTTP-Referer': 'https://github.com/cronoboris/coding-live', 'X-OpenRouter-Title': 'coding live' } : {}) },
+      body: { model: c.model, stream: false, messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], ...(openrouter ? { reasoning: { effort: 'low', exclude: true } } : {}) }, timeout: 180_000,
     });
     return { text: j.choices?.[0]?.message?.content ?? '', tokens: j.usage?.total_tokens ?? 0 };
   },

@@ -80,6 +80,25 @@ test('on connect only the newest recorded moment is queued; later moments jump a
   assert.deepEqual(b.queue.map(q => q.m.type), ['abort', 'big-write', 'report']);
 });
 
+test('a reply written for a rebuilt session shows on the new match; compaction keeps its key', () => {
+  const before = new Match({ id: 'session' });
+  before.addMoment('report', 0, 'done', 1000);
+  const b = new Booth({ provider: 'compatible', via: 'api' });
+  b.busy = true;
+  b.cover(before, () => {});
+  const key = before.moments[0].key;
+  // The hub rebuilds the session's Match from its file and shares the commentary map.
+  const after = new Match({ id: 'session' });
+  after.comments = before.comments;
+  after.addMoment('report', 0, 'done', 1000); after.addMoment('abort', 0, 'stopped', 2000);
+  b.cover(after, () => {});
+  assert.deepEqual(b.queue.map(q => q.m.type), ['abort', 'report'], 'no duplicate and no reconnect after the rebuild');
+  before.setComment(key, { caster: 'call', line: 'line' });
+  assert.equal(after.snapshot().moments.find(m => m.key === key).comment.caster, 'call');
+  const compactKey = at => { const m = new Match(); m.detected(m.tracker.compact(1), at); return m.moments[0].key; };
+  assert.equal(compactKey(5000), compactKey(90000));
+});
+
 test('worker registry errors supersede a report and repeated polling is idempotent', () => {
   const live = new Live({}, {});
   const key = id => Buffer.from(`mixdog\0${fileURLToPath(new URL(`./fixtures/worker-lifecycle/sessions/${id}.json`, import.meta.url))}`).toString('base64url');

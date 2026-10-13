@@ -38,8 +38,19 @@ test('additional providers select their documented wire and endpoints', async t 
     if (provider === 'openrouter') {
       assert.equal(c.headers['HTTP-Referer'], 'https://github.com/cronoboris/coding-live');
       assert.equal(c.headers['X-OpenRouter-Title'], 'coding live');
-    }
+      assert.deepEqual(c.body.reasoning, { effort: 'low', exclude: true });
+    } else assert.equal(c.body.reasoning, undefined);
   }
+  // OpenRouter reached through the generic compatible server gets the same low effort; other servers do not.
+  await ask({ provider: 'compatible', via: 'api', model: 'google/gemini-3.8-flash', key: 'secret', url: 'https://openrouter.ai/api/v1' }, 'prompt', 'system');
+  assert.deepEqual(calls.at(-1).body.reasoning, { effort: 'low', exclude: true });
+  assert.equal(calls.at(-1).headers['X-OpenRouter-Title'], 'coding live');
+  await ask({ provider: 'compatible', via: 'api', model: 'local-model', url: 'http://127.0.0.1:1234/v1' }, 'prompt', 'system');
+  assert.equal(calls.at(-1).body.reasoning, undefined);
+  await ask({ provider: 'openai', via: 'api', model: 'gpt-5-mini', key: 'secret' }, 'prompt', 'system');
+  assert.equal(calls.at(-1).body.reasoning_effort, 'low');
+  await ask({ provider: 'openai', via: 'api', model: 'gpt-4.1-mini', key: 'secret' }, 'prompt', 'system');
+  assert.equal(calls.at(-1).body.reasoning_effort, undefined);
 });
 
 test('new providers accept environment keys and settings, saved keys win', async () => {

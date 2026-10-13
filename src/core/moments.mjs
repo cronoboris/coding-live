@@ -168,7 +168,8 @@ export class MomentTracker {
   compact(count) {
     if (!Number.isInteger(count) || count <= this.compactCount) return [];
     this.compactCount = count;
-    return [noted('compact', 'compact', { count })];
+    // Keyed by the compaction count: the marker often has no time, and the session's latest time moves on.
+    return [noted('compact', 'compact', { count }, { threshold: count })];
   }
 }
 

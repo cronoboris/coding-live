@@ -68,7 +68,9 @@ class Tail extends EventEmitter {
   reset() {
     const old = this.match;
     this.match = new Match({ id: this.key, agent: this.adapter.agentOf?.(this.file) ?? this.adapter.id, title: basename(dirname(this.file)) });
-    if (old) for (const [k, v] of old.comments) this.match.comments.set(k, v); // keep commentary across a rebuild
+    // Keep commentary across a rebuild. The map is shared, not copied, so a line still being written for the old
+    // Match lands on the new one too.
+    if (old) this.match.comments = old.comments;
     this.parse = this.adapter.format === 'document' ? null : this.adapter.createParser(this.file);
     this.offset = 0; this.rest = '';
   }

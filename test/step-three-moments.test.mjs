@@ -65,7 +65,7 @@ test('compact uses explicit records, deduplicates cumulative counts and ignores 
   for (const [agent, records, count] of samples) assert.equal(recordedCompactions(agent, records).length, count);
   const m = new Match();
   for (const count of [1, 1, 0, 2]) m.push({ type: 'compact', at: 1000, count });
-  assert.equal(m.moments.length, 1); assert.equal(m.moments[0].count, 2);
+  assert.deepEqual(m.moments.map(x => x.threshold), [1, 2], 'one moment per compaction, keyed by its count');
 });
 test('long-run is live only, over three minutes, once per pending call', () => {
   const m = new Match(); m.push({ type: 'call', at: 1000, id: 'x', tool: { kind: 'shell', command: 'sleep 200' } });
