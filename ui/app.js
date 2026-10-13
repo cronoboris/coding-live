@@ -186,16 +186,23 @@ async function showFileNote(f, tile, facts) {
   open?.remove();
   if (open?.dataset.path === f.path) return; // clicking the same file again closes it
   const pop = el('div', 'fnote'); pop.dataset.path = f.path;
-  const x = tile.parentElement.offsetLeft + tile.offsetLeft, y = tile.parentElement.offsetTop + tile.offsetTop + tile.offsetHeight + 6;
-  pop.style.left = `${Math.max(4, Math.min(x, box.clientWidth - 364))}px`; pop.style.top = `${y}px`;
+  const x = tile.parentElement.offsetLeft + tile.offsetLeft, top = tile.parentElement.offsetTop + tile.offsetTop;
+  pop.style.left = `${Math.max(4, Math.min(x, box.clientWidth - 364))}px`;
+  // The map clips overflow, so a note that would run past the bottom opens above the tile; one taller than the map scrolls inside.
+  const place = () => {
+    pop.style.maxHeight = `${box.clientHeight - 8}px`;
+    const h = pop.offsetHeight, below = top + tile.offsetHeight + 6;
+    pop.style.top = `${below + h <= box.clientHeight - 4 ? below : Math.max(4, top - h - 6)}px`;
+  };
   const close = el('button', 'x', '×'); close.type = 'button'; close.setAttribute('aria-label', t('닫기')); close.onclick = () => pop.remove();
   const hd = el('div', 'hd'); hd.append(el('b', null, f.path), close);
   const body = el('div', 'body');
   const settingsLink = () => { const a = el('button', 'link', t('해설 설정')); a.type = 'button'; a.onclick = () => openSettings('commentary'); return a; };
   pop.append(hd, el('div', 'facts', facts), body);
   box.append(pop);
-  if (!prefs.fileExplain) { body.append(document.createTextNode(`${t('파일 AI 설명이 꺼져 있어요.')} `), settingsLink()); return; }
+  if (!prefs.fileExplain) { body.append(document.createTextNode(`${t('파일 AI 설명이 꺼져 있어요.')} `), settingsLink()); place(); return; }
   const wait = el('span', 'faint'); wait.append(el('span', 'spinner'), document.createTextNode(t('AI가 파일을 읽는 중…'))); body.append(wait);
+  place();
   const r = await api.explainFile(current.key, f.path);
   if (!pop.isConnected) return;
   body.replaceChildren();
@@ -203,10 +210,11 @@ async function showFileNote(f, tile, facts) {
     const why = !r ? t('설명을 받지 못했어요.') : r.error === 'nomic' ? t('해설 AI가 연결되지 않았어요') : r.error === 'off' ? t('파일 AI 설명이 꺼져 있어요.') : r.error === 'missing' ? t('이 파일을 찾지 못했어요.') : r.message ?? t('설명을 받지 못했어요.');
     body.append(document.createTextNode(`${why} `));
     if (r && ['nomic', 'off', 'call', 'format'].includes(r.error)) body.append(settingsLink());
-    return;
+  } else {
+    if (r.part) body.append(el('span', 'chip', r.part));
+    body.append(el('p', null, r.text), el('div', 'src', t('AI 설명 · {ai}', { ai: r.ai })));
   }
-  if (r.part) body.append(el('span', 'chip', r.part));
-  body.append(el('p', null, r.text), el('div', 'src', t('AI 설명 · {ai}', { ai: r.ai })));
+  place();
 }
 
 // ---- side: commentary, report, players -----------------------------------------------------

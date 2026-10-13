@@ -368,7 +368,7 @@ code { font-family: var(--font-mono); font-size: .9em; background: var(--layer-1
 .tf.clash::after { content: "!"; position: absolute; right: 3px; bottom: 3px; width: 13px; height: 13px; border-radius: 50%; background: var(--warn); color: #1d1d20; font: 700 9.5px/13px var(--font-sans); text-align: center; }
 .tf[role="button"] { cursor: pointer; }
 .tf[role="button"]:hover { filter: brightness(1.12); }
-.fnote { position: absolute; z-index: 6; width: 360px; max-width: calc(100% - 8px); padding: 10px 12px 12px; border-radius: var(--r-md); background: var(--base); box-shadow: var(--shadow-pop); font-size: var(--fs-meta); color: var(--text); animation: rise .15s var(--ease) both; }
+.fnote { position: absolute; z-index: 6; width: 360px; max-width: calc(100% - 8px); box-sizing: border-box; overflow-y: auto; padding: 10px 12px 12px; border-radius: var(--r-md); background: var(--base); box-shadow: var(--shadow-pop); font-size: var(--fs-meta); color: var(--text); animation: rise .15s var(--ease) both; }
 .fnote .hd { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 .fnote .hd b { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
 .fnote .x { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
