@@ -76,6 +76,7 @@
         "AppImage"
       ],
       "category": "Development",
+      "icon": "build/icons",
       "syncDesktopName": true
     },
     "publish": {

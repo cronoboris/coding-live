@@ -80,6 +80,8 @@ test('routes fold repeats and links join areas a player wrote in one after the o
   assert.deepEqual(routes(s, roles).get('x'), ['screen', 'data', 'screen']);
   assert.deepEqual(routes(s, roles).get('y'), ['logic']);
   assert.deepEqual(links(s, roles), [{ a: 'data', b: 'screen', n: 2 }], 'reading does not link; another player\'s write does not link');
+  const withOther = { ...s, feed: [...s.feed, { player: 'x', kind: 'write', paths: ['/tmp/t.cpp'] }, { player: 'x', kind: 'write', paths: ['data/b.json'] }] };
+  assert.deepEqual(links(withOther, roles), [{ a: 'data', b: 'screen', n: 2 }], '"other" never links');
   assert.equal(roleOf({ files: {}, pending: true }, 'new.js'), 'pending');
   assert.equal(roleOf({ files: {}, pending: false }, 'new.js'), 'other');
 });

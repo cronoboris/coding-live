@@ -429,6 +429,7 @@ export const EN = {
   '분류 중': 'Sorting…',
   '{a} ↔ {b}: 한 구역을 고치다 다른 구역으로 넘어가 고친 횟수 {n}번': ({ a, b, n }) => `${a} ↔ ${b}: a player fixed one, then moved on to fix the other ${pl(n, 'time', 'times')}`,
   '이번 경기 이동 기록 · 선수가 어느 구역을 거쳐 갔는지': 'Routes this match · the areas each player went through',
+  '마우스를 올리면 지도에서 이 순서대로 구역이 켜져요': 'Point at a route to light its areas on the map in order',
   'AI가 파일을 읽는 중…': 'The AI is reading the file…',
   '설명을 받지 못했어요.': 'No explanation came back.',
   '이 파일을 찾지 못했어요.': 'This file could not be found.',

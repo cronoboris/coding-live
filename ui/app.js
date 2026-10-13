@@ -208,7 +208,7 @@ function renderFiles(s) {
   if (roles) sw.title = t('파일을 역할별 구역으로 묶어요. 구역은 AI가 파일 경로를 보고 나눠요. 구역 사이 선은 선수가 한 구역을 고치다 다른 구역으로 넘어가 고친 곳이에요.');
   else sw.removeAttribute('title');
   renderFileMap($('filemap'), s, { sel: current.sel, onSelect: select, onFile: showFileNote, state: current.map, roles, noteFor: path => notes.get(`${current.key}\0${path}`), minH: roles ? Math.round($('mapScroll').clientHeight * 0.7) : 0 });
-  renderRoutes($('fmRoutes'), s, roles);
+  renderRoutes($('fmRoutes'), s, roles, $('filemap'));
 }
 const notes = new Map(); // AI file notes already fetched, by match and path: shown again when hovering the file
 

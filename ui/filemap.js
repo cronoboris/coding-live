@@ -43,35 +43,64 @@ function rows(items, width, aspect, minW, minH) {
 // others stretch their file rows to match. Every file tile ends up at least MINW × MINH. Returns the map height.
 // `space` is the margin around each folder (areas in the role view stand apart like islands); a map shorter than
 // `minH` reaches it by spacing its folder rows further apart, not by making them taller.
-function layout(dirs, W, space = GAP, minH = 0) {
-  for (const d of dirs) d.a = d.area + (HEAD + PAD + 2 * space) * Math.sqrt(d.area * DIR_ASPECT) + (2 * PAD + 2 * space) * Math.sqrt(d.area / DIR_ASPECT);
-  const dirRows = rows(dirs, W, DIR_ASPECT, Math.min(W, DIR_MINW + 2 * space), 0);
-  for (const { items } of dirRows) {
-    for (const d of items) {
-      d.fileRows = rows(d.files, Math.max(1, d.w - 2 * space - 2 * PAD), FILE_ASPECT, Math.min(MINW + GAP, d.w - 2 * space - 2 * PAD), MINH + GAP);
-      d.need = HEAD + d.fileRows.reduce((t, r) => t + r.h, 0) + PAD + 2 * space;
-    }
+const areaOf = (d, space) => d.area + (HEAD + PAD + 2 * space) * Math.sqrt(d.area * DIR_ASPECT) + (2 * PAD + 2 * space) * Math.sqrt(d.area / DIR_ASPECT);
+// File rows inside a folder of width d.w, and the height they need.
+function measure(d, space) {
+  d.fileRows = rows(d.files, Math.max(1, d.w - 2 * space - 2 * PAD), FILE_ASPECT, Math.min(MINW + GAP, d.w - 2 * space - 2 * PAD), MINH + GAP);
+  d.need = HEAD + d.fileRows.reduce((t, r) => t + r.h, 0) + PAD + 2 * space;
+}
+// The folder at (x, y), `h` tall; its file rows stretch to fill it.
+function place(d, x, y, h, space) {
+  d.box = { x: x + space, y: y + space, w: d.w - 2 * space, h: h - 2 * space };
+  const content = d.fileRows.reduce((t, r) => t + r.h, 0), stretch = (content + h - d.need) / content;
+  let fy = HEAD;
+  for (const r of d.fileRows) {
+    const rh = r.h * stretch;
+    for (const f of r.items) f.box = { x: PAD + f.x + GAP / 2, y: fy + GAP / 2, w: f.w - GAP, h: rh - GAP };
+    fy += rh;
   }
-  const natural = dirRows.map(({ items }) => Math.max(...items.map(d => d.need)));
-  const total = natural.reduce((t, h) => t + h, 0);
-  const extra = total < minH ? (minH - total) / dirRows.length : 0; // spread above and below each row, islands keep their size
+}
+// Folders in rows across W: each row is a band as tall as its tallest folder.
+function rowBands(dirs, W, space) {
+  return rows(dirs, W, DIR_ASPECT, Math.min(W, DIR_MINW + 2 * space), 0).map(({ items }) => {
+    for (const d of items) measure(d, space);
+    const h = Math.max(...items.map(d => d.need));
+    return { h, put: y => { for (const d of items) place(d, d.x, y, h, space); } };
+  });
+}
+// Bands top to bottom; a map shorter than `minH` spreads them apart (islands keep their size). Returns the height.
+function stackBands(bands, minH) {
+  const total = bands.reduce((t, b) => t + b.h, 0);
+  const extra = total < minH && bands.length ? (minH - total) / bands.length : 0;
   let y = 0;
-  for (const [ri, { items }] of dirRows.entries()) {
-    const rowH = natural[ri];
-    y += extra / 2;
-    for (const d of items) {
-      d.box = { x: d.x + space, y: y + space, w: d.w - 2 * space, h: rowH - 2 * space };
-      const content = d.fileRows.reduce((t, r) => t + r.h, 0), stretch = (content + rowH - d.need) / content;
-      let fy = HEAD;
-      for (const r of d.fileRows) {
-        const h = r.h * stretch;
-        for (const f of r.items) f.box = { x: PAD + f.x + GAP / 2, y: fy + GAP / 2, w: f.w - GAP, h: h - GAP };
-        fy += h;
-      }
-    }
-    y += rowH + extra / 2;
-  }
+  for (const b of bands) { y += extra / 2; b.put(y); y += b.h + extra / 2; }
   return y;
+}
+function layout(dirs, W, space = GAP, minH = 0) {
+  for (const d of dirs) d.a = areaOf(d, space);
+  return stackBands(rowBands(dirs, W, space), minH);
+}
+// Role view: the areas keep fixed places. Three columns on top (what people see and use, the working parts, what is
+// kept), each column's areas stacked; tests, docs and the rest in rows underneath. When the columns can't each fit
+// two files across, the areas go in rows instead (same order), so no area turns into a tall one-file-wide strip.
+const COLUMNS = [['screen', 'assets', 'network'], ['logic', 'shared', 'tooling'], ['data', 'storage']];
+function roleLayout(dirs, W, space, minH) {
+  const minCol = 2 * (MINW + GAP) + 2 * PAD + 2 * space;
+  const cols = COLUMNS.map(ids => dirs.filter(d => ids.includes(d.dir.slice(5)))).filter(c => c.length);
+  if (W < Math.max(1, cols.length) * minCol) return layout(dirs, W, space, minH);
+  for (const d of dirs) d.a = areaOf(d, space);
+  const sums = cols.map(c => c.reduce((t, d) => t + d.a, 0)), all = sums.reduce((t, n) => t + n, 0);
+  let x = 0;
+  cols.forEach((c, i) => {
+    const w = minCol + ((W - cols.length * minCol) * sums[i]) / all;
+    for (const d of c) { d.x = x; d.w = w; measure(d, space); }
+    x += w;
+  });
+  const top = cols.length ? [{
+    h: Math.max(...cols.map(c => c.reduce((t, d) => t + d.need, 0))),
+    put: y => { for (const c of cols) { let cy = y; for (const d of c) { place(d, d.x, cy, d.need, space); cy += d.need; } } },
+  }] : [];
+  return stackBands([...top, ...rowBands(dirs.filter(d => !cols.some(c => c.includes(d))), W, space)], minH);
 }
 
 // The role map's areas, in their fixed order (same ids as ROLES in src/mic.mjs; the AI sorts files into them).
@@ -98,14 +127,16 @@ export function routes(s, roles) {
   return out;
 }
 // Areas fixed together: a player who writes in one area and next writes in another links the two. Real moves only,
-// never a guessed dependency. Returns [{ a, b, n }].
+// never a guessed dependency. "Other" and "being sorted" are not real areas, so they never link. Returns [{ a, b, n }].
+const linkable = z => z !== 'pending' && z !== 'other';
+const pairKey = (a, b) => [a, b].sort().join('\0');
 export function links(s, roles) {
   const last = new Map(), count = new Map();
   for (const c of s.feed) {
     if (!['write', 'write-test'].includes(c.kind) || !c.paths?.length || !c.player) continue;
     const zone = roleOf(roles, pathOf(s, c.paths[0]));
     const prev = last.get(c.player);
-    if (prev && prev !== zone && zone !== 'pending' && prev !== 'pending') { const k = [prev, zone].sort().join('\0'); count.set(k, (count.get(k) ?? 0) + 1); }
+    if (prev && prev !== zone && linkable(zone) && linkable(prev)) { const k = pairKey(prev, zone); count.set(k, (count.get(k) ?? 0) + 1); }
     last.set(c.player, zone);
   }
   return [...count].map(([k, n]) => { const [a, b] = k.split('\0'); return { a, b, n }; });
@@ -122,6 +153,8 @@ const STATUS = { read: '읽음', write: '씀·고침', pass: '테스트 통과',
 const status = s => (STATUS[s] ? t(STATUS[s]) : s ?? '');
 const edited = n => t('{n}번 고침', { n });
 const stageOf = p => (p.finished && !p.lastTestFailed && p.lastScore ? 4 : p.lane ?? 0);
+const FLASH_MS = 8000; // as long as the move caption stays
+const focusLinks = (box, role) => box.querySelectorAll('svg.trails .zlink').forEach(n => n.classList.toggle('on', role != null && (n.dataset.a === role || n.dataset.b === role)));
 const setBox = (n, r) => { n.style.left = `${r.x}px`; n.style.top = `${r.y}px`; n.style.width = `${Math.max(0, r.w)}px`; n.style.height = `${Math.max(0, r.h)}px`; };
 
 // state: { hops: Map(playerKey -> [path]), zones: Map(playerKey -> role) } kept per match by the caller.
@@ -172,11 +205,13 @@ export function renderFileMap(box, s, { sel = null, onSelect, onFile, state, rol
     const boost = d.here ? 1 + 3 / d.weight : 1; // a folder with a player in it grows as a whole
     for (const f of d.files) f.a = f.weight * UNIT * boost;
     d.area = d.weight * UNIT * boost;
+    // "Other" is the leftovers drawer: every file at the smallest size, so it never looks like the main part.
+    if (d.dir === 'role:other') { for (const f of d.files) f.a = UNIT; d.area = d.files.length * UNIT; }
   }
   // Folders by size; areas keep their fixed order, so each area stays in the same place.
   if (roles) dirs.sort((a, b) => ROLE_ORDER.indexOf(a.dir.slice(5)) - ROLE_ORDER.indexOf(b.dir.slice(5)));
   else dirs.sort((a, b) => b.area - a.area || a.dir.localeCompare(b.dir));
-  const H = Math.ceil(layout(dirs, W, roles ? 14 : GAP, minH));
+  const H = Math.ceil(roles ? roleLayout(dirs, W, 14, minH) : layout(dirs, W, GAP, minH));
   box.style.height = `${H}px`;
 
   // Folders and files, reused across renders so size changes animate.
@@ -198,6 +233,9 @@ export function renderFileMap(box, s, { sel = null, onSelect, onFile, state, rol
     if (roles) {
       const role = d.dir.slice(5), area = roles.areas?.[role] ?? '';
       dn.dataset.role = role;
+      // Hovering an area brings up only its own lines.
+      dn.onmouseenter = () => { state.focus = role; focusLinks(box, role); };
+      dn.onmouseleave = () => { state.focus = null; focusLinks(box, null); };
       dn.title = `${roleName(role)} · ${counts}${area ? `\n${area}` : ''}`;
       dn.firstChild.firstChild.textContent = roleName(role);
       dn.firstChild.lastChild.textContent = area || counts;
@@ -237,12 +275,17 @@ export function renderFileMap(box, s, { sel = null, onSelect, onFile, state, rol
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W); svg.setAttribute('height', H);
   const center = t => ({ x: t.x + t.w / 2, y: t.y + t.h / 2 });
   // Role view: a line between two areas a player fixed one after the other, thicker the more often it happened.
+  // Almost hidden until wanted: it lights up when its area is hovered, and flashes when a player just made that move.
   const areaBox = new Map(roles ? dirs.map(d => [d.dir.slice(5), d.box]) : []);
+  const flash = (state.flash ??= new Map()), now = Date.now();
   const linkLines = (roles ? links(s, roles) : []).filter(l => areaBox.has(l.a) && areaBox.has(l.b)).map(l => {
     const a = center(areaBox.get(l.a)), b = center(areaBox.get(l.b));
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     for (const [k, v] of [['x1', a.x], ['y1', a.y], ['x2', b.x], ['y2', b.y]]) line.setAttribute(k, v.toFixed(1));
-    line.setAttribute('class', 'link');
+    line.dataset.a = l.a; line.dataset.b = l.b;
+    const since = now - (flash.get(pairKey(l.a, l.b)) ?? -Infinity);
+    line.setAttribute('class', `zlink${state.focus === l.a || state.focus === l.b ? ' on' : ''}${since < FLASH_MS ? ' flash' : ''}`);
+    if (since < FLASH_MS) line.style.animationDelay = `-${since}ms`; // a redraw carries on the same flash
     line.style.strokeWidth = String(2 + Math.min(6, l.n * 1.5));
     const tip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
     tip.textContent = t('{a} ↔ {b}: 한 구역을 고치다 다른 구역으로 넘어가 고친 횟수 {n}번', { a: roleName(l.a), b: roleName(l.b), n: l.n });
@@ -294,6 +337,10 @@ export function renderFileMap(box, s, { sel = null, onSelect, onFile, state, rol
     const was = state.zones.get(p.key);
     state.zones.set(p.key, zone);
     if (zone && was && was !== zone && zone !== 'pending' && was !== 'pending') {
+      if (linkable(zone) && linkable(was)) {
+        flash.set(pairKey(was, zone), Date.now());
+        svg.querySelectorAll('.zlink').forEach(n => { if (pairKey(n.dataset.a, n.dataset.b) === pairKey(was, zone)) { n.classList.add('flash'); n.style.animationDelay = '0ms'; } });
+      }
       box.querySelector(`.hopcap[data-key="${CSS.escape(p.key)}"]`)?.remove();
       const cap = el('div', 'hopcap'); cap.dataset.key = p.key;
       const why = intent(s, p.key);
@@ -306,8 +353,22 @@ export function renderFileMap(box, s, { sel = null, onSelect, onFile, state, rol
   box.querySelectorAll('.runner').forEach(n => { if (!seenRunners.has(n.dataset.key)) n.remove(); });
 }
 
-// Under the role map: each player's areas in the order they went, the last few moves.
-export function renderRoutes(box, s, roles) {
+// Pointing at a route lights its areas on the map one after another, in the order the player went.
+const STEP_MS = 450;
+let replay = [];
+function replayRoute(map, chips) {
+  for (const id of replay) clearTimeout(id);
+  replay = chips.map((c, i) => setTimeout(() => {
+    for (const n of [c, map.querySelector(`.tdir.island[data-role="${c.dataset.role}"]`)]) {
+      if (!n) continue;
+      n.removeAttribute('data-lit'); void n.offsetWidth; n.setAttribute('data-lit', ''); // restart the glow
+      setTimeout(() => n.removeAttribute('data-lit'), 1200);
+    }
+  }, i * STEP_MS));
+}
+
+// Under the role map: each player's areas in the order they went, the last few moves. `map` is the map they light up.
+export function renderRoutes(box, s, roles, map) {
   box.replaceChildren();
   if (!roles) { box.hidden = true; return; }
   const all = routes(s, roles);
@@ -323,6 +384,9 @@ export function renderRoutes(box, s, roles) {
     if (zones.length > shown.length) path.append(el('span', 'faint', '… '));
     shown.forEach((z, i) => { if (i) path.append(el('span', 'arrow', '→')); const c = el('span', 'zone', roleName(z)); c.dataset.role = z; if (i === shown.length - 1) c.classList.add('now'); path.append(c); });
     r.append(who, path);
+    r.tabIndex = 0;
+    r.title = t('마우스를 올리면 지도에서 이 순서대로 구역이 켜져요');
+    r.onmouseenter = r.onfocus = () => replayRoute(map, [...path.querySelectorAll('.zone')]);
     box.append(r);
   }
 }

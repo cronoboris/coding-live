@@ -422,8 +422,17 @@ code { font-family: var(--font-mono); font-size: .9em; background: var(--layer-1
 .tdir.island .tdh { top: 4px; }
 .tdir.island .tdh b { flex: none; color: color-mix(in srgb, var(--zone) 65%, var(--text)); }
 .tdir.island .tdh span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.link { stroke: var(--accent); stroke-linecap: round; opacity: .22; pointer-events: stroke; }
-.link:hover { opacity: .5; }
+/* "Other" is the leftovers drawer: quieter than the real areas. */
+.tdir.island[data-role="other"] { background: transparent; box-shadow: inset 0 0 0 1px var(--border); opacity: .8; }
+.tdir.island[data-lit] { animation: zone-lit 1.2s var(--ease) both; }
+@keyframes zone-lit { 0%, 45% { background: color-mix(in srgb, var(--zone) 30%, var(--base)); box-shadow: inset 0 0 0 3px var(--zone), 0 0 22px -4px var(--zone); } }
+.route { cursor: default; border-radius: var(--r-md); outline-offset: 2px; }
+.route .zone[data-lit] { animation: chip-lit 1.2s var(--ease) both; }
+@keyframes chip-lit { 0%, 45% { background: color-mix(in srgb, var(--zone) 40%, var(--base)); color: var(--text); } }
+.zlink { stroke: var(--accent); stroke-linecap: round; opacity: .05; pointer-events: none; transition: opacity .25s var(--ease); }
+.zlink.on { opacity: .7; pointer-events: stroke; }
+.zlink.flash { animation: link-flash 8s var(--ease) both; }
+@keyframes link-flash { 0%, 35% { opacity: .9; } }
 .hopcap { position: absolute; z-index: 5; transform: translate(-50%, -100%); max-width: 280px; padding: 5px 9px; border-radius: var(--r-md); background: var(--sheet); box-shadow: var(--shadow-pop); font-size: 11.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; animation: rise .2s var(--ease) both, fade-out .6s var(--ease) 7.4s both; }
 @keyframes fade-out { to { opacity: 0; } }
 .fmview { display: inline-flex; gap: 8px; align-items: center; }
