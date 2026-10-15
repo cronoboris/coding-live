@@ -12,6 +12,7 @@ import { demoAdapter, playDemo, stopDemo, DEMO_CWD, DEMO_LINES, demoRoles } from
 import { Settings } from './settings.mjs';
 import { groupProjects, buildProject, projectKey } from './project.mjs';
 import { LineCounter } from './lines.mjs';
+import { Director } from './director/index.mjs';
 import { parseKey } from './hub.mjs';
 import { dirname, join, basename, relative, resolve as resolvePath, sep } from 'node:path';
 import { recordedCompactions, momentEnabled, momentSettings } from './core/moments.mjs';
@@ -47,6 +48,7 @@ export class Live {
     this.micOn = new Set(); this.micOff = new Set(); this.reviews = new Map(); this.alertSubs = new Map(); this.onAlert = null;
     this.compactionFiles = new WeakMap(); this.restored = new WeakSet(); this.fileNotes = new Map(); this.roleMaps = new Map();
     this.lineCounter = new LineCounter(); this.lineCounts = new Map();
+    this.director = new Director({ projects: () => this.listProjects(), env: hub.env ?? process.env });
     this.momentSettings = momentSettings(settings.value?.moments);
     setNameStyle(settings.value?.general?.nameStyle);
     setLanguage(settings.value?.general?.language, this.locale);
@@ -457,5 +459,5 @@ export class Live {
     seen.finished = snap.finished;
   }
 
-  close() { clearInterval(this.scanTimer); for (const s of this.alertSubs.values()) s.stop?.(); for (const t of this.hub.tails.values()) t.stop(); }
+  close() { this.director.closeAll(); clearInterval(this.scanTimer); for (const s of this.alertSubs.values()) s.stop?.(); for (const t of this.hub.tails.values()) t.stop(); }
 }

@@ -78,6 +78,7 @@ const TOUR = [
   { target: '.side', title: '중계와 해설', text: '에이전트가 하는 일을 한 줄씩 중계해요. 중요한 장면에는 캐스터와 해설위원이 반응하고, "더보기"를 누르면 쓴 도구와 명령을 쉬운 말로 풀어 줘요.' },
   { target: '.side [data-t="report"]', title: '리포트', text: '경기가 끝나면 결과 요약과, 결과를 믿기 전에 확인할 점을 정리해 줘요.' },
   { target: '.side [data-t="players"]', title: '선수', text: '선수별 기록과, 사용자에게 묻지 않고 스스로 정한 결정을 모아 보여 줘요.' },
+  { target: '.side [data-t="chat"]', title: '지시', text: '여기서 Claude Code, Codex, omp에게 직접 일을 시킬 수 있어요. 파일을 고치거나 명령을 실행하기 전에는 항상 허락을 물어요. 다른 탭을 보고 있을 때 허락 요청이 오면 이 탭에 노란 점이 떠요.' },
   { target: '#mic', title: 'AI 해설', text: '작은 AI가 결정적 장면을 해설해요. 이 버튼으로 켜고 꺼요.' },
   { target: '#widgetBtn', title: '위젯', text: '다른 일을 하면서도 화면 구석의 작은 창으로 경기를 볼 수 있어요.' },
   { target: '#list', title: '경기 목록', text: '에이전트가 일하는 프로젝트가 여기 경기로 쌓여요. 지금 경기 중인 건 맨 위에 있어요.' },

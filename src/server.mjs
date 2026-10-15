@@ -10,7 +10,7 @@ import { MOMENT_GROUPS } from './core/moments.mjs';
 
 const UI = fileURLToPath(new URL('../ui/', import.meta.url));
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
-const STATIC = new Set(['index.html', 'app.js', 'settings.js', 'widget.html', 'widget.js', 'shared.js', 'transport.js', 'filemap.js', 'onboard.js', 'i18n.js', 'style.css', 'widget.css', 'manifest.webmanifest', 'sw.js', 'icon.svg']);
+const STATIC = new Set(['index.html', 'app.js', 'settings.js', 'widget.html', 'widget.js', 'shared.js', 'transport.js', 'filemap.js', 'onboard.js', 'chat.js', 'i18n.js', 'style.css', 'widget.css', 'manifest.webmanifest', 'sw.js', 'icon.svg']);
 
 export async function startServer({ port = 4417, host = '127.0.0.1', mic, env = process.env, settingsFile = join(homedir(), '.coding-live', 'settings.json') } = {}) {
   const live = await Live.create({ mic, env, settingsFile });
@@ -62,6 +62,27 @@ export async function startServer({ port = 4417, host = '127.0.0.1', mic, env = 
       if (path === '/api/tutorial' || path === '/api/tutorial/stop') {
         if (req.method !== 'POST' || req.headers['x-coding-live'] !== '1') return json(res, 403, { error: 'forbidden' });
         return json(res, 200, path === '/api/tutorial' ? await live.startTutorial() : await live.stopTutorial());
+      }
+      if (path === '/api/director/agents' && req.method === 'GET') return json(res, 200, live.director.agents());
+      if (path === '/api/director' && req.method === 'GET') return json(res, 200, live.director.find(new URL(req.url, 'http://x').searchParams.get('project')));
+      const d = /^\/api\/director\/(start|[\w-]+\/(stream|send|approve|stop|close))$/.exec(path);
+      if (d) {
+        const id = d[1].split('/')[0], action = d[2];
+        if (action === 'stream' && req.method === 'GET') {
+          const chat = live.director.get(id);
+          if (!chat) return json(res, 404, { error: 'unknown chat' });
+          res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store', connection: 'keep-alive' });
+          req.on('close', chat.subscribe(e => res.write(`data: ${JSON.stringify(e)}\n\n`), () => res.end()));
+          return;
+        }
+        if (req.method !== 'POST' || req.headers['x-coding-live'] !== '1') return json(res, 403, { error: 'forbidden' });
+        const body = JSON.parse((await readBody(req)) || '{}');
+        if (d[1] === 'start') { const r = live.director.start(body); return json(res, r.error ? 400 : 200, r); }
+        if (action === 'close') { const r = live.director.drop(id); return json(res, r.error ? 404 : 200, r); }
+        const chat = live.director.get(id);
+        if (!chat) return json(res, 404, { error: 'unknown chat' });
+        const r = action === 'send' ? await chat.send(body.text) : action === 'approve' ? chat.approve(body.requestId, body.decision) : chat.stop();
+        return json(res, r.error ? 409 : 200, r);
       }
       const f = /^\/api\/project\/([\w-]+)\/file$/.exec(path);
       if (f) {

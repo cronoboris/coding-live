@@ -11,6 +11,8 @@ const post = async (url, body) => {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 };
+// Director calls answer with { error } bodies on 4xx, which the tab shows; only a broken connection throws.
+const directorPost = (url, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-coding-live': '1' }, body: JSON.stringify(body ?? {}) }).then(r => r.json());
 const get = url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 
 // Browser mode has no app shell to broadcast settings: tell this page directly and other tabs (the widget) over a channel.
@@ -48,6 +50,20 @@ const http = {
   setMic: (key, on) => post(`/api/match/${key}/mic`, { on }).catch(() => null),
   review: key => post(`/api/match/${key}/review`).catch(() => null),
   explainFile: (key, path) => post(`/api/project/${key}/file`, { path }).catch(() => null),
+  director: {
+    agents: () => get('/api/director/agents'),
+    find: project => get(`/api/director?project=${encodeURIComponent(project)}`),
+    start: opts => directorPost('/api/director/start', opts),
+    send: (id, text) => directorPost(`/api/director/${id}/send`, { text }),
+    approve: (id, requestId, decision) => directorPost(`/api/director/${id}/approve`, { requestId, decision }),
+    stop: id => directorPost(`/api/director/${id}/stop`),
+    close: id => directorPost(`/api/director/${id}/close`),
+    watch(id, onEvent) {
+      const es = new EventSource(`/api/director/${id}/stream`);
+      es.onmessage = e => onEvent(JSON.parse(e.data));
+      return () => es.close();
+    },
+  },
   startTutorial: () => post('/api/tutorial').catch(() => null),
   stopTutorial: () => post('/api/tutorial/stop').catch(() => null),
   micStatus: () => get('/api/mic'),
@@ -78,6 +94,16 @@ const desktop = ipc && {
   setMic: (key, on) => ipc.setMic(key, on).then(r => (r?.error ? null : r)),
   review: key => ipc.review(key).then(r => (r?.error ? null : r)),
   explainFile: (key, path) => ipc.explainFile(key, path).catch(() => null),
+  director: {
+    agents: () => ipc.director.call('agents'),
+    find: project => ipc.director.call('find', project),
+    start: opts => ipc.director.call('start', opts),
+    send: (id, text) => ipc.director.call('send', id, text),
+    approve: (id, requestId, decision) => ipc.director.call('approve', id, requestId, decision),
+    stop: id => ipc.director.call('stop', id),
+    close: id => ipc.director.call('close', id),
+    watch: (id, onEvent) => ipc.director.watch(id, onEvent),
+  },
   startTutorial: () => ipc.startTutorial(),
   stopTutorial: () => ipc.stopTutorial(),
   micStatus: () => ipc.micStatus(),

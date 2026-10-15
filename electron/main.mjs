@@ -275,6 +275,27 @@ function wireIpc() {
   handle('cl:mic', (_e, key, on) => live.setMic(key, on));
   handle('cl:review', (_e, key) => live.review(key));
   handle('cl:explain-file', (_e, key, path) => live.explainFile(String(key), String(path)));
+  handle('cl:director', (_e, op, id, a, b) => {
+    const d = live.director;
+    if (op === 'agents') return d.agents();
+    if (op === 'find') return d.find(String(id));
+    if (op === 'start') return d.start(id && typeof id === 'object' ? id : {});
+    if (op === 'close') return d.drop(String(id));
+    const chat = d.get(String(id));
+    if (!chat) return { error: 'unknown chat' };
+    if (op === 'send') return chat.send(a);
+    if (op === 'approve') return chat.approve(String(a), String(b));
+    if (op === 'stop') return chat.stop();
+    return { error: 'unknown' };
+  });
+  handle('cl:director-watch', (e, sid, id) => {
+    const chat = live.director.get(String(id)), sender = e.sender;
+    if (!chat) return false;
+    const stop = chat.subscribe(ev => { if (!sender.isDestroyed()) sender.send('cl:director-event', { sid, ev }); }, () => subs.delete(sid));
+    subs.set(sid, stop);
+    sender.once('destroyed', () => { subs.get(sid)?.(); subs.delete(sid); });
+    return true;
+  });
   handle('cl:tutorial-start', () => live.startTutorial());
   handle('cl:tutorial-stop', () => live.stopTutorial());
   handle('cl:mic-status', () => live.micStatus());

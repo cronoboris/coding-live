@@ -29,6 +29,16 @@ contextBridge.exposeInMainWorld('codingLive', {
   setMic: (key, on) => ipcRenderer.invoke('cl:mic', String(key), !!on),
   review: key => ipcRenderer.invoke('cl:review', String(key)),
   explainFile: (key, path) => ipcRenderer.invoke('cl:explain-file', String(key), String(path)),
+  director: {
+    call: (op, ...args) => ipcRenderer.invoke('cl:director', op, ...args),
+    watch(id, onEvent) {
+      const sid = `d${Date.now().toString(36)}-${++seq}`;
+      const handler = (_e, msg) => { if (msg.sid === sid) onEvent(msg.ev); };
+      ipcRenderer.on('cl:director-event', handler);
+      ipcRenderer.invoke('cl:director-watch', sid, String(id));
+      return () => { ipcRenderer.removeListener('cl:director-event', handler); ipcRenderer.invoke('cl:unwatch', sid); };
+    },
+  },
   startTutorial: () => ipcRenderer.invoke('cl:tutorial-start'),
   stopTutorial: () => ipcRenderer.invoke('cl:tutorial-stop'),
   micStatus: () => ipcRenderer.invoke('cl:mic-status'),

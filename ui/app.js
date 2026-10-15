@@ -7,6 +7,7 @@ import { api } from './transport.js';
 import { openSettings, toast } from './settings.js';
 import { renderFileMap, renderRoutes } from './filemap.js';
 import { startOnboarding, startTour } from './onboard.js';
+import { showChat, hideChat, leaveChat } from './chat.js';
 
 let info = { agents: [] };
 let projects = [];
@@ -110,6 +111,7 @@ function openMatch(key) {
   $('match').hidden = false;
   for (const id of ['filemap', 'stats', 'side', 'who', 'statePill', 'selChip']) $(id).replaceChildren();
   $('side').append(el('div', 'list-empty', t('경기를 불러오는 중…')));
+  syncChat(null);
   current.stop = api.watchProject(key, snap => { if (current?.key !== key) return; current.snap = snap; current.members = [...new Set([...current.members, ...snap.players.map(p => p.key)])]; render(); }, state => {
     if (current?.key !== key) return;
     if (state === 'gone') setTimeout(() => { if (current?.key === key && !current.snap) loadProjects(); }, 1500);
@@ -119,6 +121,7 @@ function openMatch(key) {
 }
 function closeMatch() {
   current?.stop?.(); current = null;
+  leaveChat();
   $('match').hidden = true; $('welcome').hidden = false;
   $('app').classList.remove('watching');
   renderList(); renderWelcome();
@@ -257,9 +260,17 @@ function renderSide(s) {
   document.querySelectorAll('.side [data-t]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.t === current.tab)));
   const chip = $('selChip'); chip.replaceChildren();
   if (current.sel) { const p = playerOf(s, current.sel); if (p) { const c = el('button', 'chip accent'); c.type = 'button'; c.style.border = '0'; c.style.cursor = 'pointer'; c.append(document.createTextNode(t('{player}만 보기', { player: p.player })), icon('x', 12)); c.onclick = () => select(current.sel); chip.append(c); } }
+  if (syncChat(s)) return;
   if (current.tab === 'feed') renderFeed(s);
   else if (current.tab === 'report') renderReport(s);
   else renderPlayers(s);
+}
+// The 지시 tab keeps its own DOM next to the other tabs' scroller (see chat.js); true when it is the open tab.
+function syncChat(s) {
+  const on = current.tab === 'chat';
+  $('sideScroll').hidden = on;
+  if (on) { current.feedRendered = false; showChat(document.querySelector('.side'), current.key, s); } else hideChat();
+  return on;
 }
 function momentNode(s, m) {
   const p = playerOf(s, m.player);
