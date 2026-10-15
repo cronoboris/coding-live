@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +15,8 @@ function setup(t) {
   const commands = Object.fromEntries(Object.entries(AGENTS).map(([id, mode]) => [id, [process.execPath, FAKE, mode]]));
   const players = [{ agent: 'claude-code', sessionId: 'old-session' }, { agent: 'codex', sessionId: 'old-session' }, { agent: 'omp', sessionId: '/s/old.jsonl' }];
   const d = new Director({ projects: () => [{ key: 'p1', cwd, players, left: [] }], env: { PATH: '' }, commands });
-  t.after(() => { d.closeAll(); rmSync(cwd, { recursive: true, force: true }); });
+  // Windows keeps the folder locked until the closed agents have fully exited, so removal retries.
+  t.after(() => { d.closeAll(); return rm(cwd, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }); });
   return d;
 }
 // Collects a chat's events and resolves once one matches.
@@ -175,7 +177,7 @@ test('director routes refuse writes without the app header', async t => {
   const home = mkdtempSync(join(tmpdir(), 'coding-live-director-home-'));
   const port = 4700 + Math.floor(Math.random() * 200);
   const s = await startServer({ port, env: { HOME: home, PATH: '' }, settingsFile: join(home, 'settings.json') });
-  t.after(() => { s.close(); rmSync(home, { recursive: true, force: true }); });
+  t.after(() => { s.close(); return rm(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }); });
   const url = `http://127.0.0.1:${port}/api/director`;
   assert.equal((await fetch(`${url}/start`, { method: 'POST', body: '{}' })).status, 403);
   const ok = await fetch(`${url}/start`, { method: 'POST', headers: { 'x-coding-live': '1' }, body: JSON.stringify({ project: 'x', agent: 'codex' }) });
